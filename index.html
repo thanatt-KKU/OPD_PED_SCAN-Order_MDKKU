@@ -4,13 +4,46 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ส่ง Order ใบสั่งยา - OPD PED</title>
-  <!-- Tailwind CSS เพื่อการจัดแต่ง UI อย่างรวดเร็ว -->
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- HTML5 Qrcode Library สำหรับสแกนบาร์โค้ด -->
+  <!-- HTML5 Qrcode Library -->
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
-    #reader { width: 100%; display: none; }
-    #reader video { border-radius: 0.5rem; }
+    /* UI ตกแต่งกล้องและเส้นสแกนสีแดงแบบแอพธนาคาร */
+    #reader-wrapper {
+      position: relative;
+      overflow: hidden;
+      border-radius: 0.75rem;
+      background-color: #000;
+    }
+    
+    #reader { 
+      width: 100%; 
+    }
+    
+    #reader video { 
+      object-fit: cover;
+      border-radius: 0.75rem;
+    }
+
+    /* เส้นเลเซอร์สแกนสีแดงเรืองแสง */
+    .scan-line {
+      position: absolute;
+      left: 5%;
+      width: 90%;
+      height: 3px;
+      background-color: #ff0033;
+      box-shadow: 0 0 8px #ff0033, 0 0 12px #ff0033;
+      z-index: 10;
+      pointer-events: none;
+      animation: scanAnimation 2s infinite ease-in-out;
+    }
+
+    @keyframes scanAnimation {
+      0% { top: 15%; opacity: 0.6; }
+      50% { top: 80%; opacity: 1; }
+      100% { top: 15%; opacity: 0.6; }
+    }
   </style>
 </head>
 <body class="bg-slate-100 min-h-screen p-4 text-slate-800">
@@ -19,7 +52,7 @@
     
     <!-- Header -->
     <div class="text-center mb-6">
-      <h1 class="text-2xl font-bold text-blue-600"> OPD PED Order Sender</h1>
+      <h1 class="text-2xl font-bold text-blue-600">OPD PED Order Sender</h1>
       <p class="text-sm text-slate-500">ระบบถ่ายภาพและส่งใบสั่งยาเข้าห้องผลิตยา</p>
     </div>
 
@@ -29,46 +62,59 @@
       <div>
         <label class="block text-sm font-semibold mb-1">เลข HN คนไข้ <span class="text-red-500">*</span></label>
         <div class="flex gap-2">
-          <input type="text" id="hnInput" required placeholder="กรอก หรือ สแกน HN" 
-                 class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-lg">
+          <input type="text" id="hnInput" required placeholder="เช่น AB1234" 
+                 class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-lg uppercase">
           <button type="button" onclick="toggleScanner()" 
-                  class="bg-blue-100 text-blue-700 px-3 py-2 rounded-lg font-semibold hover:bg-blue-200 transition flex items-center gap-1">
+                  class="bg-blue-100 text-blue-700 px-3 py-2 rounded-lg font-semibold hover:bg-blue-200 transition flex items-center gap-1 shrink-0">
             📷 สแกน
           </button>
         </div>
-        <!-- กล้องสแกนบาร์โค้ด -->
-        <div id="reader" class="mt-2"></div>
-      </div>
-
-      <!-- 2. ส่วนถ่ายรูปใบสั่งยา -->
-      <div>
-        <label class="block text-sm font-semibold mb-1">ถ่ายรูปใบสั่งยา <span class="text-red-500">*</span></label>
         
-        <!-- ปุ่มกดถ่ายรูป (บังคับเปิดกล้องหลังบนมือถือ) -->
-        <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="processImage(event)">
-        
-        <button type="button" onclick="document.getElementById('cameraInput').click()" 
-                class="w-full py-3 px-4 border-2 border-dashed border-blue-400 bg-blue-50 text-blue-600 rounded-lg font-semibold hover:bg-blue-100 transition flex justify-center items-center gap-2">
-          📸 เปิดกล้องถ่ายภาพใบยา
-        </button>
-      </div>
-
-      <!-- Canvas ซ่อนไว้ใช้ประมวลผลรูปภาพ (B/W + Contrast Adjustment) -->
-      <canvas id="processCanvas" class="hidden"></canvas>
-
-      <!-- 3. ส่วนพรีวิวรูปภาพที่ผ่านการปรับแต่งแล้ว -->
-      <div id="previewContainer" class="hidden">
-        <label class="block text-sm font-semibold mb-1 text-slate-600">ตัวอย่างภาพที่สแกน (ปรับความชัดแล้ว):</label>
-        <div class="relative rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
-          <img id="imagePreview" src="" alt="Order Preview" class="w-full h-auto object-contain max-h-80">
-          <button type="button" onclick="clearImage()" class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full text-xs hover:bg-red-600">
-            ✕ ยกเลิกรูป
-          </button>
+        <!-- กล้องสแกนบาร์โค้ด + เส้นสีแดง -->
+        <div id="scannerContainer" class="mt-2 hidden">
+          <div id="reader-wrapper">
+            <div class="scan-line"></div>
+            <div id="reader"></div>
+          </div>
+          <p class="text-xs text-center text-slate-500 mt-1">วางบาร์โค้ด HN ให้อยู่ในกรอบเพื่อสแกน</p>
         </div>
       </div>
 
-      <!-- 4. หมายเหตุเพิ่มเติม (ถ้ามี) -->
-      <div>
+      <!-- 2. Section ภาพ Protocol (รองรับหลายหน้า) -->
+      <div class="border-t pt-4">
+        <label class="block text-sm font-semibold mb-1 text-slate-700">1. ภาพ Protocol / เอกสารแนบ (ถ้ามี)</label>
+        
+        <input type="file" id="protocolInput" accept="image/*" capture="environment" class="hidden" onchange="handleImageUpload(event, 'protocol')">
+        
+        <button type="button" onclick="document.getElementById('protocolInput').click()" 
+                class="w-full py-2.5 px-4 border-2 border-dashed border-slate-300 bg-slate-50 text-slate-600 rounded-lg font-medium hover:bg-slate-100 transition flex justify-center items-center gap-2 text-sm">
+          📋 + ถ่ายภาพ Protocol (สแกนเพิ่มได้)
+        </button>
+
+        <!-- Preview Grid สำหรับ Protocol -->
+        <div id="protocolGrid" class="grid grid-cols-3 gap-2 mt-2"></div>
+      </div>
+
+      <!-- 3. Section ภาพใบสั่งยา (รองรับหลายหน้า) -->
+      <div class="border-t pt-4">
+        <label class="block text-sm font-semibold mb-1 text-slate-700">2. ถ่ายรูปใบสั่งยา <span class="text-red-500">*</span></label>
+        
+        <input type="file" id="prescriptionInput" accept="image/*" capture="environment" class="hidden" onchange="handleImageUpload(event, 'prescription')">
+        
+        <button type="button" onclick="document.getElementById('prescriptionInput').click()" 
+                class="w-full py-3 px-4 border-2 border-dashed border-blue-400 bg-blue-50 text-blue-600 rounded-lg font-semibold hover:bg-blue-100 transition flex justify-center items-center gap-2">
+          📸 + ถ่ายภาพใบสั่งยา (สแกนเพิ่มได้)
+        </button>
+
+        <!-- Preview Grid สำหรับ ใบสั่งยา -->
+        <div id="prescriptionGrid" class="grid grid-cols-3 gap-2 mt-2"></div>
+      </div>
+
+      <!-- Canvas ซ่อนไว้ใช้ประมวลผลรูปภาพ (B/W + Contrast) -->
+      <canvas id="processCanvas" class="hidden"></canvas>
+
+      <!-- 4. หมายเหตุเพิ่มเติม -->
+      <div class="border-t pt-4">
         <label class="block text-sm font-semibold mb-1">หมายเหตุถึงเภสัชกร (ถ้ามี)</label>
         <textarea id="noteInput" rows="2" placeholder="เช่น STAT, ยาด่วน, เปลี่ยน dose..." 
                   class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"></textarea>
@@ -89,43 +135,64 @@
 
   <script>
     let html5QrcodeScanner = null;
-    let processedBase64Image = "";
+    
+    // Arrays สำหรับเก็บ Base64 ของรูปภาพแต่ละประเภท
+    let protocolImages = [];
+    let prescriptionImages = [];
 
-    // --- 1. ระบบสแกน Barcode / QR Code ---
+    // --- 1. ระบบสแกน Barcode (พร้อม Laser Red Line & Formats) ---
     function toggleScanner() {
-      const readerDiv = document.getElementById('reader');
-      if (readerDiv.style.display === 'block') {
-        stopScanner();
-      } else {
-        readerDiv.style.display = 'block';
+      const container = document.getElementById('scannerContainer');
+      if (container.classList.contains('hidden')) {
+        container.classList.remove('hidden');
+        
         html5QrcodeScanner = new Html5Qrcode("reader");
+        const config = { 
+          fps: 15, 
+          qrbox: { width: 260, height: 140 },
+          // ปรับปรุงการสแกนรหัสบาร์โค้ดโรงพยาบาล (Code128, Code39)
+          formatsToSupport: [ 
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.QR_CODE,
+            Html5QrcodeSupportedFormats.EAN_13
+          ]
+        };
+
         html5QrcodeScanner.start(
           { facingMode: "environment" }, 
-          { fps: 10, qrbox: { width: 250, height: 150 } },
+          config,
           (decodedText) => {
-            document.getElementById('hnInput').value = decodedText;
+            // ทำการแปลงเป็นตัวพิมพ์ใหญ่ และทำความสะอาดข้อมูล
+            document.getElementById('hnInput').value = decodedText.trim().toUpperCase();
             stopScanner();
           },
-          (errorMessage) => { /* ซ่อน error log ย่อย */ }
+          (errorMessage) => { /* Ignore minor scanning errors */ }
         ).catch(err => {
           alert('ไม่สามารถเปิดกล้องได้: ' + err);
           stopScanner();
         });
+      } else {
+        stopScanner();
       }
     }
 
     function stopScanner() {
       if (html5QrcodeScanner) {
         html5QrcodeScanner.stop().then(() => {
-          document.getElementById('reader').style.display = 'none';
+          document.getElementById('scannerContainer').classList.add('hidden');
+          html5QrcodeScanner = null;
         }).catch(() => {
-          document.getElementById('reader').style.display = 'none';
+          document.getElementById('scannerContainer').classList.add('hidden');
+          html5QrcodeScanner = null;
         });
+      } else {
+        document.getElementById('scannerContainer').classList.add('hidden');
       }
     }
 
-    // --- 2. ระบบดักจับภาพถ่าย & ปรับภาพให้สแกนชัด (Auto B/W Document Scanner Effect) ---
-    function processImage(event) {
+    // --- 2. ระบบจัดการภาพถ่าย (ประมวลผล + รองรับหลายหน้า) ---
+    function handleImageUpload(event, type) {
       const file = event.target.files[0];
       if (!file) return;
 
@@ -136,7 +203,7 @@
           const canvas = document.getElementById('processCanvas');
           const ctx = canvas.getContext('2d');
 
-          // ย่อขนาดภาพไม่ให้ใหญ่เกินไป (Max Width 1600px) เพื่อประหยัดพื้นที่และโหลดเร็ว
+          // ย่อขนาดภาพให้คมชัด ไม่เปลืองพื้นที่ (Max Width 1600px)
           const maxWidth = 1600;
           let width = img.width;
           let height = img.height;
@@ -150,37 +217,37 @@
           canvas.height = height;
           ctx.drawImage(img, 0, 0, width, height);
 
-          // ดึง Pixel Data มาทำ Grayscale + High Contrast (ปรับตัวอักษรลายมือให้ดำชัด 배경สว่าง)
+          // ปรับภาพขาวดำ + High Contrast
           const imgData = ctx.getImageData(0, 0, width, height);
           const data = imgData.data;
 
           for (let i = 0; i < data.length; i += 4) {
-            // คำนวณค่าความสว่าง Grayscale
             const avg = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
-            
-            // ปรับ Thresholding (ถ้าสว่างเกินไปให้เป็นขาว ถ้ามืดให้ดึงเป็นดำเข้ม)
             let val = avg;
             if (val > 140) {
-              val = Math.min(255, val * 1.15); // เร่งพื้นหลังให้ขาว
+              val = Math.min(255, val * 1.15); // เร่งพื้นหลังขาว
             } else {
-              val = Math.max(0, val * 0.75);  // เร่งรอยหมึกปากกาให้ดำชัด
+              val = Math.max(0, val * 0.75);  // เร่งรอยหมึกดำ
             }
-
-            data[i] = val;     // Red
-            data[i + 1] = val; // Green
-            data[i + 2] = val; // Blue
+            data[i] = val;
+            data[i + 1] = val;
+            data[i + 2] = val;
           }
 
           ctx.putImageData(imgData, 0, 0);
+          const processedBase64 = canvas.toDataURL('image/jpeg', 0.85);
 
-          // แปลงเป็น Base64 Image (JPEG compression 0.85)
-          processedBase64Image = canvas.toDataURL('image/jpeg', 0.85);
+          // บันทึกลง Array ตามประเภท
+          if (type === 'protocol') {
+            protocolImages.push(processedBase64);
+            renderThumbnails('protocol');
+          } else if (type === 'prescription') {
+            prescriptionImages.push(processedBase64);
+            renderThumbnails('prescription');
+          }
 
-          // แสดง Preview
-          document.getElementById('imagePreview').src = processedBase64Image;
-          document.getElementById('previewContainer').classList.remove('hidden');
-          
-          // เปิดใช้งานปุ่มส่ง
+          // เคลียร์ค่า input file เพื่อให้ถ่ายรูปซ้ำได้
+          event.target.value = "";
           checkFormStatus();
         };
         img.src = e.target.result;
@@ -188,16 +255,46 @@
       reader.readAsDataURL(file);
     }
 
-    function clearImage() {
-      processedBase64Image = "";
-      document.getElementById('cameraInput').value = "";
-      document.getElementById('previewContainer').classList.add('hidden');
+    // แสดงผลรูปย่อ Grid
+    function renderThumbnails(type) {
+      const isProtocol = type === 'protocol';
+      const images = isProtocol ? protocolImages : prescriptionImages;
+      const grid = document.getElementById(isProtocol ? 'protocolGrid' : 'prescriptionGrid');
+      
+      grid.innerHTML = "";
+
+      images.forEach((imgBase64, index) => {
+        const itemContainer = document.createElement('div');
+        itemContainer.className = "relative border rounded-lg overflow-hidden bg-slate-100 aspect-square flex items-center justify-center";
+        
+        itemContainer.innerHTML = `
+          <img src="${imgBase64}" class="w-full h-full object-cover">
+          <span class="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">หน้า ${index + 1}</span>
+          <button type="button" onclick="removeImage('${type}', ${index})" 
+                  class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold hover:bg-red-600 shadow">
+            ✕
+          </button>
+        `;
+        grid.appendChild(itemContainer);
+      });
+    }
+
+    // ลบรูปภาพที่เลือก
+    function removeImage(type, index) {
+      if (type === 'protocol') {
+        protocolImages.splice(index, 1);
+        renderThumbnails('protocol');
+      } else {
+        prescriptionImages.splice(index, 1);
+        renderThumbnails('prescription');
+      }
       checkFormStatus();
     }
 
+    // ตรวจสอบสถานะการกดส่ง (ต้องมีรูปใบสั่งยาอย่างน้อย 1 ใบ)
     function checkFormStatus() {
       const submitBtn = document.getElementById('submitBtn');
-      if (processedBase64Image !== "") {
+      if (prescriptionImages.length > 0) {
         submitBtn.disabled = false;
         submitBtn.classList.remove('bg-slate-300', 'text-slate-500', 'cursor-not-allowed');
         submitBtn.classList.add('bg-blue-600', 'text-white', 'hover:bg-blue-700', 'shadow-md');
@@ -208,11 +305,11 @@
       }
     }
 
-    // --- 3. การส่งข้อมูลไปยัง Backend (Google Apps Script) ---
+    // --- 3. การส่งข้อมูลไปยัง Backend ---
     function handleSubmit(e) {
       e.preventDefault();
       
-      const hn = document.getElementById('hnInput').value.trim();
+      const hn = document.getElementById('hnInput').value.trim().toUpperCase();
       const note = document.getElementById('noteInput').value.trim();
       const submitBtn = document.getElementById('submitBtn');
       const statusMsg = document.getElementById('statusMsg');
@@ -222,26 +319,30 @@
         return;
       }
 
-      // ปิดปุ่มระหว่างรอส่ง
+      if (prescriptionImages.length === 0) {
+        alert('กรุณารถ่ายภาพใบสั่งยาอย่างน้อย 1 หน้า');
+        return;
+      }
+
       submitBtn.disabled = true;
       submitBtn.innerText = "⏳ กำลังส่งข้อมูล...";
       statusMsg.className = "mt-4 text-center text-blue-600 font-semibold";
-      statusMsg.innerText = "กำลังบันทึกรูปภาพและข้อมูล...";
+      statusMsg.innerText = "กำลังอัปโหลดเอกสารเข้าระบบ...";
 
+      // Payload รวมภาพแบบ Array
       const payload = {
         hn: hn,
         note: note,
-        imageData: processedBase64Image
+        protocolImages: protocolImages,        // Array of Base64 strings
+        prescriptionImages: prescriptionImages  // Array of Base64 strings
       };
 
-      // ฟังก์ชันส่งไปหา Apps Script (ถ้าเขียนบน Apps Script ใช้ google.script.run)
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         google.script.run
           .withSuccessHandler(onSuccess)
           .withFailureHandler(onFailure)
           .saveOrderData(payload);
       } else {
-        // สำหรับทดสอบการทำงานบน Browser ทั่วไป
         console.log("Payload Ready:", payload);
         setTimeout(() => onSuccess({ success: true, message: "ทดสอบสำเร็จ (Demo Mode)" }), 1500);
       }
@@ -253,9 +354,13 @@
         statusMsg.className = "mt-4 text-center text-green-600 font-semibold";
         statusMsg.innerText = "✅ ส่ง Order เรียบร้อยแล้ว!";
         
-        // Reset Form
+        // Reset Form & Clear Memory
         document.getElementById('orderForm').reset();
-        clearImage();
+        protocolImages = [];
+        prescriptionImages = [];
+        renderThumbnails('protocol');
+        renderThumbnails('prescription');
+        checkFormStatus();
       } else {
         onFailure(response.message);
       }
