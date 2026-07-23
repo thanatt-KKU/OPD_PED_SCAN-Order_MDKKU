@@ -12,11 +12,11 @@
     .thumb-grid img { transition: transform 0.2s ease; }
     .thumb-grid img:hover { transform: scale(1.03); }
 
-    /* Overlay Mask สำหรับกล้องถ่ายภาพ */
+    /* Overlay สติ๊กเกอร์ แบบใส สว่าง ไม่มืด */
     .camera-overlay {
       position: absolute;
       inset: 0;
-      background: rgba(0, 0, 0, 0.6);
+      background: rgba(0, 0, 0, 0.35);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -24,29 +24,17 @@
       z-index: 10;
     }
 
-    /* กรอบเล็งสติ๊กเกอร์ 3.5 x 8 cm (สัดส่วน 8 : 3.5) */
+    /* กรอบสติ๊กเกอร์ 3.5x8 cm */
     .frame-sticker {
-      width: 80%;
+      width: 85%;
       max-width: 320px;
       aspect-ratio: 8 / 3.5;
-      border: 2px solid #3b82f6;
-      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65);
+      border: 3px solid #3b82f6;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
       border-radius: 8px;
       position: relative;
     }
 
-    /* กรอบเล็ง A4 (สัดส่วน 1 : 1.414) */
-    .frame-a4 {
-      width: 70%;
-      max-width: 280px;
-      aspect-ratio: 1 / 1.414;
-      border: 2px dashed #22c55e;
-      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65);
-      border-radius: 6px;
-      position: relative;
-    }
-
-    /* เส้นนำสายตาตรงกลางกรอบสติ๊กเกอร์ */
     .scan-line-red {
       position: absolute;
       top: 50%;
@@ -56,6 +44,12 @@
       background-color: #ef4444;
       box-shadow: 0 0 8px #ef4444;
       transform: translateY(-50%);
+    }
+
+    /* กรอบตัวอย่าง A4 สไตล์การ์ดคำแนะนำ */
+    .a4-guide-card {
+      border: 2px dashed #3b82f6;
+      background-color: #eff6ff;
     }
   </style>
 </head>
@@ -71,7 +65,7 @@
 
     <form id="orderForm" onsubmit="handleSubmit(event)" class="space-y-5">
       
-      <!-- 1. ส่วนถ่ายรูปสติ๊กเกอร์ / สแกน HN -->
+      <!-- 1. ส่วนถ่ายรูปสติ๊กเกอร์ / สแกน HN (ใช้ Live Cam Frame 3.5x8) -->
       <div class="bg-blue-50/60 p-3.5 rounded-xl border border-blue-100">
         <label class="block text-sm font-semibold mb-1 text-blue-900">
           เลข HN คนไข้ <span class="text-red-500">*</span>
@@ -81,16 +75,16 @@
           <input type="text" id="hnInput" required placeholder="กรอก หรือ ถ่ายรูปสติ๊กเกอร์" 
                  class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-lg uppercase font-bold bg-white">
           
-          <button type="button" onclick="openCustomCamera('sticker')" 
+          <button type="button" onclick="openStickerCamera()" 
                   class="bg-blue-600 text-white px-3.5 py-2 rounded-lg font-semibold hover:bg-blue-700 transition flex items-center gap-1.5 shrink-0 shadow-sm text-sm">
             📸 ถ่ายสติ๊กเกอร์
           </button>
         </div>
 
-        <!-- กรอบแสดง Preview ภาพสติ๊กเกอร์ -->
+        <!-- Preview ภาพสติ๊กเกอร์ -->
         <div id="stickerPreviewContainer" class="hidden mt-2.5 p-2 bg-white rounded-lg border border-blue-200">
           <div class="flex justify-between items-center mb-1">
-            <span class="text-[11px] font-semibold text-slate-600">🖼️ สติ๊กเกอร์ที่สแกน (3.5x8 cm):</span>
+            <span class="text-[11px] font-semibold text-slate-600">🖼️ สติ๊กเกอร์ที่สแกน (ตัดขอบแล้ว):</span>
             <button type="button" onclick="clearStickerPreview()" class="text-xs text-red-500 hover:underline">✕ ล้างรูป</button>
           </div>
           <div class="relative flex justify-center bg-slate-100 rounded p-1">
@@ -98,34 +92,38 @@
           </div>
         </div>
 
-        <p id="barcodeStatus" class="text-xs text-slate-500 mt-2">📷 กดถ่ายสติ๊กเกอร์เพื่อเปิดกล้องพร้อมกรอบเล็ง 3.5x8 cm</p>
+        <p id="barcodeStatus" class="text-xs text-slate-500 mt-2">📷 วางสติ๊กเกอร์ในกรอบสีฟ้าเพื่อแกะ HN อัตโนมัติ</p>
       </div>
 
-      <!-- 2. Section ภาพ Protocol / เอกสารแนบ -->
+      <!-- 2. Section ภาพ Protocol ( Native Camera + Auto White Background) -->
       <div class="border-t pt-4">
         <div class="flex justify-between items-center mb-1.5">
           <label class="block text-sm font-semibold text-slate-700">1. ภาพ Protocol / เอกสารแนบ (ถ้ามี)</label>
           <span id="protocolCount" class="text-xs font-semibold text-slate-400">0 รูป</span>
         </div>
         
-        <button type="button" onclick="openCustomCamera('protocol')" 
-                class="w-full py-2.5 px-4 border-2 border-dashed border-slate-300 bg-slate-50 text-slate-600 rounded-lg font-medium hover:bg-slate-100 transition flex justify-center items-center gap-2 text-sm">
-          📋 + ถ่ายภาพ Protocol (สแกนกรอบ A4)
+        <input type="file" id="protocolInput" accept="image/*" capture="environment" class="hidden" onchange="handleDocumentUpload(event, 'protocol')">
+        
+        <button type="button" onclick="document.getElementById('protocolInput').click()" 
+                class="w-full py-3 px-4 border-2 border-dashed border-slate-300 bg-slate-50 text-slate-600 rounded-lg font-medium hover:bg-slate-100 transition flex justify-center items-center gap-2 text-sm">
+          📋 + ถ่ายภาพ Protocol (กล้องคมชัด + ตัดขอบขาว A4)
         </button>
 
         <div id="protocolGrid" class="grid grid-cols-3 gap-2 mt-2.5 thumb-grid"></div>
       </div>
 
-      <!-- 3. Section ภาพใบสั่งยา (Prescription Orders) -->
+      <!-- 3. Section ภาพใบสั่งยา (Native Camera + Auto White Background) -->
       <div class="border-t pt-4">
         <div class="flex justify-between items-center mb-1.5">
           <label class="block text-sm font-semibold text-slate-700">2. ถ่ายรูปใบสั่งยา <span class="text-red-500">*</span></label>
           <span id="prescriptionCount" class="text-xs font-semibold text-slate-400">0 รูป</span>
         </div>
         
-        <button type="button" onclick="openCustomCamera('prescription')" 
+        <input type="file" id="prescriptionInput" accept="image/*" capture="environment" class="hidden" onchange="handleDocumentUpload(event, 'prescription')">
+        
+        <button type="button" onclick="document.getElementById('prescriptionInput').click()" 
                 class="w-full py-3 px-4 border-2 border-dashed border-blue-400 bg-blue-50 text-blue-600 rounded-lg font-semibold hover:bg-blue-100 transition flex justify-center items-center gap-2 text-sm">
-          📸 + ถ่ายภาพใบสั่งยา (สแกนกรอบ A4)
+          📸 + ถ่ายภาพใบสั่งยา (กล้องคมชัด + ตัดขอบขาว A4)
         </button>
 
         <div id="prescriptionGrid" class="grid grid-cols-3 gap-2 mt-2.5 thumb-grid"></div>
@@ -151,38 +149,27 @@
 
   </div>
 
-  <!-- Modal กล้องถ่ายรูปพร้อม Overlay กรอบเล็ง -->
-  <div id="cameraModal" class="fixed inset-0 bg-black z-50 hidden flex flex-col justify-between overflow-hidden">
-    <!-- Camera Viewport -->
+  <!-- Modal กล้องสติ๊กเกอร์ (สว่างชัด ไม่มืด) -->
+  <div id="stickerCameraModal" class="fixed inset-0 bg-black z-50 hidden flex flex-col justify-between overflow-hidden">
     <div class="relative flex-1 w-full h-full flex items-center justify-center overflow-hidden">
-      <video id="webcamVideo" autoplay playsinline class="absolute inset-0 w-full h-full object-cover"></video>
+      <video id="stickerVideo" autoplay playsinline class="absolute inset-0 w-full h-full object-cover"></video>
       
-      <!-- Overlay Frame (แสดงตามประเภทการถ่าย) -->
       <div class="camera-overlay">
-        <!-- กรอบสติ๊กเกอร์ 3.5 x 8 cm -->
-        <div id="stickerGuide" class="frame-sticker hidden">
+        <div class="frame-sticker">
           <div class="scan-line-red"></div>
         </div>
-        
-        <!-- กรอบ A4 -->
-        <div id="a4Guide" class="frame-a4 hidden"></div>
-
-        <p id="cameraGuideText" class="text-white text-xs mt-4 bg-black/50 px-3 py-1 rounded-full font-light">
-          วางเอกสารให้อยู่ภายในกรอบ
+        <p class="text-white text-xs mt-4 bg-black/60 px-3 py-1 rounded-full font-medium">
+          วางสติ๊กเกอร์ (3.5x8 cm) ให้อยู่ในกรอบสีฟ้า
         </p>
       </div>
     </div>
 
-    <!-- Camera Controls -->
-    <div class="bg-black/80 p-6 flex justify-around items-center z-20">
-      <button type="button" onclick="closeCustomCamera()" class="text-white text-sm font-medium px-4 py-2 rounded-lg bg-slate-800">
+    <div class="bg-black/90 p-5 flex justify-around items-center z-20">
+      <button type="button" onclick="closeStickerCamera()" class="text-white text-sm font-medium px-4 py-2 rounded-lg bg-slate-800">
         ✕ ยกเลิก
       </button>
-      
-      <!-- ปุ่มกดถ่ายภาพ -->
-      <button type="button" onclick="capturePhoto()" class="w-16 h-16 rounded-full border-4 border-white bg-red-600 active:scale-95 transition shadow-lg"></button>
-      
-      <div class="w-12"></div> <!-- Spacer เพื่อความสมดุล -->
+      <button type="button" onclick="captureStickerPhoto()" class="w-16 h-16 rounded-full border-4 border-white bg-blue-600 active:scale-95 transition shadow-lg"></button>
+      <div class="w-12"></div>
     </div>
   </div>
 
@@ -212,148 +199,76 @@
 
     let protocolImages = [];
     let prescriptionImages = [];
-    
-    let currentCameraMode = null; // 'sticker', 'protocol', 'prescription'
-    let mediaStream = null;
+    let stickerStream = null;
 
     let currentModalType = null;
     let currentModalIndex = null;
 
-    // --- 1. ระบบเปิดกล้องพร้อมกรอบเล็ง Real-time ---
-    async function openCustomCamera(mode) {
-      currentCameraMode = mode;
-      const modal = document.getElementById('cameraModal');
-      const stickerGuide = document.getElementById('stickerGuide');
-      const a4Guide = document.getElementById('a4Guide');
-      const guideText = document.getElementById('cameraGuideText');
-
-      // ปรับเปลี่ยนกรอบตามประเภท
-      if (mode === 'sticker') {
-        stickerGuide.classList.remove('hidden');
-        a4Guide.classList.add('hidden');
-        guideText.innerText = "จัดสติ๊กเกอร์ (3.5x8 cm) ให้อยู่ในกรอบสีฟ้า";
-      } else {
-        stickerGuide.classList.add('hidden');
-        a4Guide.classList.remove('hidden');
-        guideText.innerText = "จัดเอกสารให้อยู่ในกรอบ A4 สีเขียว";
-      }
-
+    // --- 1. กล้องถ่ายสติ๊กเกอร์ (สว่าง ชัดเจน) ---
+    async function openStickerCamera() {
+      const modal = document.getElementById('stickerCameraModal');
       try {
-        // ขอสิทธิ์เปิดกล้องหลังมือถือ
-        mediaStream = await navigator.mediaDevices.getUserMedia({
+        stickerStream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { exact: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }
         }).catch(() => {
-          // Fallback ถ้าเปิดกล้องหลังแบบ exact ไม่ได้
           return navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
         });
 
-        const video = document.getElementById('webcamVideo');
-        video.srcObject = mediaStream;
+        const video = document.getElementById('stickerVideo');
+        video.srcObject = stickerStream;
         modal.classList.remove('hidden');
       } catch (err) {
-        alert("ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตสิทธิ์การใช้กล้องในเบราว์เซอร์: " + err);
+        alert("ไม่สามารถเปิดกล้องสติ๊กเกอร์ได้: " + err);
       }
     }
 
-    function closeCustomCamera() {
-      if (mediaStream) {
-        mediaStream.getTracks().forEach(track => track.stop());
-        mediaStream = null;
+    function closeStickerCamera() {
+      if (stickerStream) {
+        stickerStream.getTracks().forEach(track => track.stop());
+        stickerStream = null;
       }
-      document.getElementById('cameraModal').classList.add('hidden');
+      document.getElementById('stickerCameraModal').classList.add('hidden');
     }
 
-    // --- 2. ถ่ายภาพและตัดเฉพาะเนื้อหาในกรอบเล็ง ---
-    function capturePhoto() {
-      const video = document.getElementById('webcamVideo');
+    function captureStickerPhoto() {
+      const video = document.getElementById('stickerVideo');
       const canvas = document.getElementById('processCanvas');
       const ctx = canvas.getContext('2d');
+
+      canvas.width = 800;
+      canvas.height = 350;
+
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       const videoWidth = video.videoWidth;
       const videoHeight = video.videoHeight;
 
-      if (currentCameraMode === 'sticker') {
-        // ประมวลผลภาพสติ๊กเกอร์ (สัดส่วน 8 : 3.5)
-        canvas.width = 800;
-        canvas.height = 350;
+      const cropWidth = videoWidth * 0.85;
+      const cropHeight = cropWidth / (8 / 3.5);
+      const startX = (videoWidth - cropWidth) / 2;
+      const startY = (videoHeight - cropHeight) / 2;
 
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(video, startX, startY, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
 
-        // คำนวณตัดเฉพาะพื้นที่ตรงกลางที่แสดงในกรอบ
-        const cropWidth = videoWidth * 0.80;
-        const cropHeight = cropWidth / (8 / 3.5);
-        const startX = (videoWidth - cropWidth) / 2;
-        const startY = (videoHeight - cropHeight) / 2;
-
-        ctx.drawImage(video, startX, startY, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
-
-        // ปรับภาพเป็น B/W High Contrast
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imgData.data;
-        for (let i = 0; i < data.length; i += 4) {
-          const avg = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
-          const val = avg < 130 ? 0 : 255;
-          data[i] = val; data[i + 1] = val; data[i + 2] = val;
-        }
-        ctx.putImageData(imgData, 0, 0);
-
-        const processedStickerBase64 = canvas.toDataURL('image/jpeg', 0.9);
-        document.getElementById('stickerPreviewImg').src = processedStickerBase64;
-        document.getElementById('stickerPreviewContainer').classList.remove('hidden');
-
-        // สแกนบาร์โค้ด
-        scanBarcodeFromImage(processedStickerBase64);
-
-      } else {
-        // ประมวลผลภาพ A4 (1200 x 1697 px)
-        canvas.width = 1200;
-        canvas.height = 1697;
-
-        // เทสีขาวพื้นหลัง (ส่วนนอกกรอบจะเป็นสีขาว)
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        let cropWidth, cropHeight;
-        if (videoHeight / videoWidth > 1.414) {
-          cropWidth = videoWidth * 0.70;
-          cropHeight = cropWidth * 1.414;
-        } else {
-          cropHeight = videoHeight * 0.70;
-          cropWidth = cropHeight / 1.414;
-        }
-
-        const startX = (videoWidth - cropWidth) / 2;
-        const startY = (videoHeight - cropHeight) / 2;
-
-        ctx.drawImage(video, startX, startY, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
-
-        // ปรับ Contrast ลบเงาพื้นหลัง
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imgData.data;
-        for (let i = 0; i < data.length; i += 4) {
-          const avg = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
-          let val = avg > 135 ? 255 : Math.max(0, avg * 0.65);
-          data[i] = val; data[i + 1] = val; data[i + 2] = val;
-        }
-        ctx.putImageData(imgData, 0, 0);
-
-        const processedBase64 = canvas.toDataURL('image/jpeg', 0.85);
-
-        if (currentCameraMode === 'protocol') {
-          protocolImages.push(processedBase64);
-          renderThumbnails('protocol');
-        } else {
-          prescriptionImages.push(processedBase64);
-          renderThumbnails('prescription');
-        }
-        checkFormStatus();
+      // B/W Contrast
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imgData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        const avg = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
+        const val = avg < 130 ? 0 : 255;
+        data[i] = val; data[i + 1] = val; data[i + 2] = val;
       }
+      ctx.putImageData(imgData, 0, 0);
 
-      closeCustomCamera();
+      const processedStickerBase64 = canvas.toDataURL('image/jpeg', 0.9);
+      document.getElementById('stickerPreviewImg').src = processedStickerBase64;
+      document.getElementById('stickerPreviewContainer').classList.remove('hidden');
+
+      scanBarcodeFromImage(processedStickerBase64);
+      closeStickerCamera();
     }
 
-    // --- 3. ถอดรหัส บาร์โค้ด ---
     function scanBarcodeFromImage(base64Image) {
       const statusEl = document.getElementById('barcodeStatus');
       statusEl.className = "text-xs text-blue-600 font-semibold animate-pulse";
@@ -385,10 +300,82 @@
       document.getElementById('stickerPreviewContainer').classList.add('hidden');
       document.getElementById('stickerPreviewImg').src = "";
       document.getElementById('barcodeStatus').className = "text-xs text-slate-500 mt-2";
-      document.getElementById('barcodeStatus').innerText = "📷 กดถ่ายสติ๊กเกอร์เพื่อเปิดกล้องพร้อมกรอบเล็ง 3.5x8 cm";
+      document.getElementById('barcodeStatus').innerText = "📷 วางสติ๊กเกอร์ในกรอบสีฟ้าเพื่อแกะ HN อัตโนมัติ";
     }
 
-    // --- 4. Render Thumbnails & Preview Lightbox ---
+    // --- 2. การถ่ายภาพเอกสารด้วย Native Camera (คมชัด 100% + Auto-Crop ขอบขาว A4) ---
+    function handleDocumentUpload(event, type) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.getElementById('processCanvas');
+          const ctx = canvas.getContext('2d');
+
+          // กำหนดขนาดสเกล A4 ความละเอียดสูง คมชัดมาก (1200 x 1697 px)
+          canvas.width = 1200;
+          canvas.height = 1697;
+
+          // 1. เทสีขาวบริสุทธิ์ทั้ง Canvas (ขอบนอกจะกลายเป็นสีขาวเพื่อประหยัดหมึกพิมพ์)
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          // 2. คำนวณครอบภาพเฉพาะพื้นที่ตรงกลาง
+          let cropWidth, cropHeight;
+          if (img.height / img.width > 1.414) {
+            cropWidth = img.width * 0.92;
+            cropHeight = cropWidth * 1.414;
+          } else {
+            cropHeight = img.height * 0.92;
+            cropWidth = cropHeight / 1.414;
+          }
+
+          const startX = (img.width - cropWidth) / 2;
+          const startY = (img.height - cropHeight) / 2;
+
+          // 3. วาดภาพลงตรงกลาง Canvas สีขาว
+          ctx.drawImage(img, startX, startY, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
+
+          // 4. ปรับ High Contrast ดึงตัวอักษรให้เข้ม ลบเงาเทา
+          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imgData.data;
+
+          for (let i = 0; i < data.length; i += 4) {
+            const avg = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
+            let val = avg;
+            if (val > 135) {
+              val = 255; // เร่งกระดาษรอบนอกและส่วนสว่างให้ขาวจั๊วะ
+            } else {
+              val = Math.max(0, val * 0.65); // ดึงลายมือ/ตัวอักษรให้เข้มขึ้น
+            }
+            data[i] = val;
+            data[i + 1] = val;
+            data[i + 2] = val;
+          }
+
+          ctx.putImageData(imgData, 0, 0);
+          const processedBase64 = canvas.toDataURL('image/jpeg', 0.88);
+
+          if (type === 'protocol') {
+            protocolImages.push(processedBase64);
+            renderThumbnails('protocol');
+          } else if (type === 'prescription') {
+            prescriptionImages.push(processedBase64);
+            renderThumbnails('prescription');
+          }
+
+          event.target.value = "";
+          checkFormStatus();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // --- 3. Render Thumbnails & Preview Lightbox ---
     function renderThumbnails(type) {
       const isProtocol = type === 'protocol';
       const images = isProtocol ? protocolImages : prescriptionImages;
@@ -463,7 +450,7 @@
       }
     }
 
-    // --- 5. การส่งข้อมูลไปยัง Apps Script ---
+    // --- 4. การส่งข้อมูลไปยัง Apps Script ---
     function handleSubmit(e) {
       e.preventDefault();
       
