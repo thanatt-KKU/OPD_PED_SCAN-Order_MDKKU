@@ -177,7 +177,7 @@
   <canvas id="processCanvas" class="hidden"></canvas>
 
   <script>
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz-DUGuT_b0WCpeRF9u3nHgcfJ3spd7mEBGMVQKebnitNtRT05QCbEEdtLcx_P0Nz2q/exec";
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw9vn5yumfbOmBQKQujw9pfLpSeZwu30ZVuGZuoIwd7u8xLZeOC5JntEdvSeXFimriXSg/exec";
 
     let protocolImages = [];
     let prescriptionImages = [];
@@ -382,7 +382,7 @@
       }
     }
 
-    // --- 4. การส่งข้อมูล + Reset Form รวดเร็ว แม่นยำ ---
+    // --- 4. การส่งข้อมูล (ใช้ text/plain แก้ปัญหา CORS + no-cors Data Loss) ---
     async function handleSubmit(e) {
       e.preventDefault();
       
@@ -407,20 +407,17 @@
       };
 
       try {
-        const formData = new URLSearchParams();
-        formData.append('data', JSON.stringify(payload));
-
+        // ใช้ text/plain ส่ง JSON ตรงๆ ผ่าน no-cors ทะลุเข้า Apps Script ได้ 100%
         await fetch(WEB_APP_URL, {
           method: 'POST',
           mode: 'no-cors',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: formData.toString()
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify(payload)
         });
 
         statusMsg.className = "mt-4 text-center text-green-600 font-bold";
         statusMsg.innerText = "✅ ส่ง Order และสร้างไฟล์ PDF เรียบร้อยแล้ว!";
 
-        // เรียกฟังก์ชันรีเซ็ตปุ่มและฟอร์ม
         resetEntireForm();
 
       } catch (error) {
