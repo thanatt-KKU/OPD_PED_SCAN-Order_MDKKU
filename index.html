@@ -6,7 +6,7 @@
   <title>ส่ง Order ใบสั่งยา - OPD PED</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- ZXing Library สำหรับแกะ Barcode จากไฟล์รูปภาพ -->
+  <!-- ZXing Library สำหรับแกะ Barcode -->
   <script src="https://unpkg.com/@zxing/library@latest"></script>
   <style>
     .thumb-grid img {
@@ -35,7 +35,6 @@
           เลข HN คนไข้ <span class="text-red-500">*</span>
         </label>
         
-        <!-- Input กล้องสแกนสติ๊กเกอร์ -->
         <input type="file" id="barcodeCameraInput" accept="image/*" capture="environment" class="hidden" onchange="processBarcodeImage(event)">
 
         <div class="flex gap-2 mb-2">
@@ -48,18 +47,18 @@
           </button>
         </div>
 
-        <!-- กรอบแสดง Preview ภาพสติ๊กเกอร์ที่ปรับเป็นขาวดำแล้ว -->
+        <!-- กรอบแสดง Preview ภาพสติ๊กเกอร์ -->
         <div id="stickerPreviewContainer" class="hidden mt-2.5 p-2 bg-white rounded-lg border border-blue-200">
           <div class="flex justify-between items-center mb-1">
-            <span class="text-[11px] font-semibold text-slate-600">🖼️ ภาพสติ๊กเกอร์ที่นำไปสแกน (ปรับขาวดำ):</span>
+            <span class="text-[11px] font-semibold text-slate-600">🖼️ สติ๊กเกอร์ที่สแกน (ตัดขอบแล้ว):</span>
             <button type="button" onclick="clearStickerPreview()" class="text-xs text-red-500 hover:underline">✕ ล้างรูป</button>
           </div>
-          <div class="relative flex justify-center bg-slate-900 rounded p-1">
-            <img id="stickerPreviewImg" src="" class="max-h-28 object-contain rounded border border-slate-700">
+          <div class="relative flex justify-center bg-slate-100 rounded p-1">
+            <img id="stickerPreviewImg" src="" class="max-h-24 object-contain rounded border border-slate-300 shadow-sm">
           </div>
         </div>
 
-        <p id="barcodeStatus" class="text-xs text-slate-500 mt-2">📷 ถ่ายรูปสติ๊กเกอร์บาร์โค้ดเพื่อดึงเลข HN อัตโนมัติ (แก้ไขมือได้)</p>
+        <p id="barcodeStatus" class="text-xs text-slate-500 mt-2">📷 วางสติ๊กเกอร์ให้อยู่กึ่งกลางภาพขณะถ่ายเพื่อดึง HN อัตโนมัติ</p>
       </div>
 
       <!-- 2. Section ภาพ Protocol / เอกสารแนบ -->
@@ -73,7 +72,7 @@
         
         <button type="button" onclick="document.getElementById('protocolInput').click()" 
                 class="w-full py-2.5 px-4 border-2 border-dashed border-slate-300 bg-slate-50 text-slate-600 rounded-lg font-medium hover:bg-slate-100 transition flex justify-center items-center gap-2 text-sm">
-          📋 + ถ่ายภาพ Protocol เพิ่ม
+          📋 + ถ่ายภาพ Protocol (สแกนกรอบ A4)
         </button>
 
         <div id="protocolGrid" class="grid grid-cols-3 gap-2 mt-2.5 thumb-grid"></div>
@@ -90,7 +89,7 @@
         
         <button type="button" onclick="document.getElementById('prescriptionInput').click()" 
                 class="w-full py-3 px-4 border-2 border-dashed border-blue-400 bg-blue-50 text-blue-600 rounded-lg font-semibold hover:bg-blue-100 transition flex justify-center items-center gap-2 text-sm">
-          📸 + ถ่ายภาพใบสั่งยา (ถ่ายได้หลายหน้า)
+          📸 + ถ่ายภาพใบสั่งยา (สแกนกรอบ A4)
         </button>
 
         <div id="prescriptionGrid" class="grid grid-cols-3 gap-2 mt-2.5 thumb-grid"></div>
@@ -124,7 +123,7 @@
     </div>
     
     <div class="flex-1 flex items-center justify-center my-auto p-2 overflow-hidden">
-      <img id="modalImg" src="" class="max-h-[75vh] max-w-full object-contain rounded-lg shadow-2xl">
+      <img id="modalImg" src="" class="max-h-[75vh] max-w-full object-contain rounded-lg shadow-2xl bg-white">
     </div>
 
     <div class="pb-4 text-center">
@@ -135,9 +134,8 @@
     </div>
   </div>
 
-  <!-- Canvas ซ่อนไว้ใช้ประมวลผลรูปภาพ -->
+  <!-- Canvases สำหรับประมวลผลรูปภาพ -->
   <canvas id="processCanvas" class="hidden"></canvas>
-  <canvas id="barcodeCropCanvas" class="hidden"></canvas>
 
   <script>
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwPuk8-ush98U8MuBWTJTz5R8T6WBmrgzJxUpxA-ewdJ1Fr6Or-DnpaWgSaxj_gujr3Yg/exec";
@@ -148,7 +146,7 @@
     let currentModalType = null;
     let currentModalIndex = null;
 
-    // --- 1. ระบบ Crop อัตราส่วน 2.5x5 cm + ปรับขาวดำ + ถอดรหัส บาร์โค้ด ---
+    // --- 1. ถ่ายสติ๊กเกอร์ (สัดส่วน 2.5x5 cm -> Ratio 2:1) + ตัดขอบสีขาว ---
     function processBarcodeImage(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -161,48 +159,45 @@
       reader.onload = function(e) {
         const img = new Image();
         img.onload = function() {
-          const canvas = document.getElementById('barcodeCropCanvas');
+          const canvas = document.getElementById('processCanvas');
           const ctx = canvas.getContext('2d');
 
-          // อัตราส่วนสติ๊กเกอร์ 5 : 2.5 (อัตราส่วน 2:1)
-          // ตัดเอาพื้นที่เฉพาะบริเวณตรงกลางภาพความกว้าง 80% และปรับความสูงตามสเกล 2:1
-          const cropWidth = img.width * 0.85;
+          // กำหนด Canvas เป็นขนาด 800x400 (อัตราส่วน 2.5 : 5 cm หรือ 2:1)
+          canvas.width = 800;
+          canvas.height = 400;
+
+          // เทพื้นหลังสีขาวบริสุทธิ์ทั้งภาพ
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          // คำนวณตัดภาพเฉพาะพื้นที่ตรงกลาง
+          const cropWidth = img.width * 0.80;
           const cropHeight = cropWidth / 2; // อัตราส่วน 2:1
           const startX = (img.width - cropWidth) / 2;
           const startY = (img.height - cropHeight) / 2;
 
-          // กำหนดขนาด Output กำหนดให้อยู่ช่วง 800x400px (ความคมชัดกำลังดีสำหรับการแกะบาร์โค้ด)
-          canvas.width = 800;
-          canvas.height = 400;
-
-          // วาดภาพเฉพาะส่วนสติ๊กเกอร์ลงบน Canvas
+          // วาดภาพสติ๊กเกอร์เฉพาะในกรอบ
           ctx.drawImage(img, startX, startY, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
 
-          // ปรับปรุงภาพให้เป็น B/W High Contrast (เร่งความเข้มลายเส้นบาร์โค้ด)
+          // ปรับปรุงภาพให้เป็น B/W High Contrast เพื่อความคมชัดของบาร์โค้ด
           const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
           const data = imgData.data;
 
           for (let i = 0; i < data.length; i += 4) {
-            // คำนวณความสว่าง Grayscale
             const avg = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
-            
-            // ใช้ Binarization Threshold (ถ้ามืดดึงให้เป็นดำเข้ม ถ้าสว่างเร่งเป็นขาวบริสุทธิ์)
-            const threshold = 125;
-            const val = avg < threshold ? 0 : 255;
-
-            data[i] = val;     // R
-            data[i + 1] = val; // G
-            data[i + 2] = val; // B
+            const val = avg < 130 ? 0 : 255; // Thresholding ดำ-ขาว ชัดเจน
+            data[i] = val;
+            data[i + 1] = val;
+            data[i + 2] = val;
           }
 
           ctx.putImageData(imgData, 0, 0);
 
-          // แปลงเป็นรูปภาพเพื่อนำมาแสดง Preview
           const processedStickerBase64 = canvas.toDataURL('image/jpeg', 0.9);
           document.getElementById('stickerPreviewImg').src = processedStickerBase64;
           document.getElementById('stickerPreviewContainer').classList.remove('hidden');
 
-          // นำรูปภาพที่ผ่านการปรับแต่งแล้วไปถอดรหัส บาร์โค้ด ด้วย ZXing
+          // อ่าน Barcode ด้วย ZXing
           const processedImg = new Image();
           processedImg.onload = function() {
             const codeReader = new ZXing.BrowserMultiFormatReader();
@@ -218,9 +213,8 @@
                 }
               })
               .catch(err => {
-                console.warn("Barcode Read Error:", err);
                 statusEl.className = "text-xs text-amber-600 font-semibold";
-                statusEl.innerText = "⚠️ ระบบอ่านบาร์โค้ดไม่ออก (สามารถพิมพ์เลข HN เองได้เลยครับ)";
+                statusEl.innerText = "⚠️ ระบบอ่านบาร์โค้ดไม่ออก (แก้ไข/พิมพ์เลข HN เองได้เลยครับ)";
               });
           };
           processedImg.src = processedStickerBase64;
@@ -236,10 +230,10 @@
       document.getElementById('stickerPreviewContainer').classList.add('hidden');
       document.getElementById('stickerPreviewImg').src = "";
       document.getElementById('barcodeStatus').className = "text-xs text-slate-500 mt-2";
-      document.getElementById('barcodeStatus').innerText = "📷 ถ่ายรูปสติ๊กเกอร์บาร์โค้ดเพื่อดึงเลข HN อัตโนมัติ (แก้ไขมือได้)";
+      document.getElementById('barcodeStatus').innerText = "📷 วางสติ๊กเกอร์ให้อยู่กึ่งกลางภาพขณะถ่ายเพื่อดึง HN อัตโนมัติ";
     }
 
-    // --- 2. ระบบประมวลผลภาพถ่าย Protocol & ใบสั่งยา ---
+    // --- 2. ถ่ายรูป Protocol / ใบสั่งยา (กรอบ A4 Ratio -> 1 : 1.414) + นอกกรอบเทขาว ---
     function handleImageUpload(event, type) {
       const file = event.target.files[0];
       if (!file) return;
@@ -251,29 +245,43 @@
           const canvas = document.getElementById('processCanvas');
           const ctx = canvas.getContext('2d');
 
-          const maxWidth = 1600;
-          let width = img.width;
-          let height = img.height;
+          // ตั้งขนาด Canvas เป็นสัดส่วนสเกล A4 (1200 x 1697 px)
+          canvas.width = 1200;
+          canvas.height = 1697; // 1200 * 1.4142
 
-          if (width > maxWidth) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
+          // 1. เทสีขาวทั้งผืนก่อน (ส่วนหลุดกรอบจะกลายเป็นสีขาวทั้งหมดเพื่อประหยัดหมึกพิมพ์)
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          // 2. คำนวณตัดเอาเฉพาะพื้นที่ A4 ตรงกลางภาพถ่าย
+          let cropWidth, cropHeight;
+          if (img.height / img.width > 1.414) {
+            // ภาพแนวตั้งยาวเกินไป
+            cropWidth = img.width * 0.90;
+            cropHeight = cropWidth * 1.414;
+          } else {
+            // ภาพแนวกว้างเกินไป
+            cropHeight = img.height * 0.90;
+            cropWidth = cropHeight / 1.414;
           }
 
-          canvas.width = width;
-          canvas.height = height;
-          ctx.drawImage(img, 0, 0, width, height);
+          const startX = (img.width - cropWidth) / 2;
+          const startY = (img.height - cropHeight) / 2;
 
-          const imgData = ctx.getImageData(0, 0, width, height);
+          // 3. วาดภาพเฉพาะส่วน A4 ตรงกลางลงบน Canvas สีขาว
+          ctx.drawImage(img, startX, startY, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
+
+          // 4. ปรับ Contrast ให้เอกสารชัด ลบเงาดำพื้นหลัง
+          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
           const data = imgData.data;
 
           for (let i = 0; i < data.length; i += 4) {
             const avg = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
             let val = avg;
-            if (val > 140) {
-              val = Math.min(255, val * 1.15);
+            if (val > 135) {
+              val = 255; // เร่งกระดาษหลุดกรอบและกระดาษสีเทาให้เป็นขาวจั๊วะ
             } else {
-              val = Math.max(0, val * 0.75);
+              val = Math.max(0, val * 0.65); // ดึงรอยหมึกปากกาให้ดำเข้มขึ้น
             }
             data[i] = val;
             data[i + 1] = val;
@@ -311,7 +319,7 @@
 
       images.forEach((imgBase64, index) => {
         const itemContainer = document.createElement('div');
-        itemContainer.className = "relative border rounded-lg overflow-hidden bg-slate-100 aspect-square flex items-center justify-center cursor-pointer group shadow-sm";
+        itemContainer.className = "relative border rounded-lg overflow-hidden bg-white aspect-[1/1.414] flex items-center justify-center cursor-pointer group shadow-sm border-slate-200";
         
         itemContainer.innerHTML = `
           <img src="${imgBase64}" class="w-full h-full object-cover" onclick="openModal('${type}', ${index})">
