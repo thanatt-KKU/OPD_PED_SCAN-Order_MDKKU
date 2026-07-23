@@ -9,7 +9,6 @@
   <!-- ZXing Library สำหรับแกะ Barcode จากไฟล์รูปภาพ -->
   <script src="https://unpkg.com/@zxing/library@latest"></script>
   <style>
-    /* Custom Scrollbar for smooth previewing */
     .thumb-grid img {
       transition: transform 0.2s ease;
     }
@@ -36,7 +35,7 @@
           เลข HN คนไข้ <span class="text-red-500">*</span>
         </label>
         
-        <!-- ซ่อน Input กล้องสแกนสติ๊กเกอร์ -->
+        <!-- Input กล้องสแกนสติ๊กเกอร์ -->
         <input type="file" id="barcodeCameraInput" accept="image/*" capture="environment" class="hidden" onchange="processBarcodeImage(event)">
 
         <div class="flex gap-2 mb-2">
@@ -48,7 +47,19 @@
             📸 ถ่ายสติ๊กเกอร์
           </button>
         </div>
-        <p id="barcodeStatus" class="text-xs text-slate-500">📷 ถ่ายรูปสติ๊กเกอร์บาร์โค้ดเพื่อดึงเลข HN อัตโนมัติ (แก้ไขมือได้)</p>
+
+        <!-- กรอบแสดง Preview ภาพสติ๊กเกอร์ที่ปรับเป็นขาวดำแล้ว -->
+        <div id="stickerPreviewContainer" class="hidden mt-2.5 p-2 bg-white rounded-lg border border-blue-200">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-[11px] font-semibold text-slate-600">🖼️ ภาพสติ๊กเกอร์ที่นำไปสแกน (ปรับขาวดำ):</span>
+            <button type="button" onclick="clearStickerPreview()" class="text-xs text-red-500 hover:underline">✕ ล้างรูป</button>
+          </div>
+          <div class="relative flex justify-center bg-slate-900 rounded p-1">
+            <img id="stickerPreviewImg" src="" class="max-h-28 object-contain rounded border border-slate-700">
+          </div>
+        </div>
+
+        <p id="barcodeStatus" class="text-xs text-slate-500 mt-2">📷 ถ่ายรูปสติ๊กเกอร์บาร์โค้ดเพื่อดึงเลข HN อัตโนมัติ (แก้ไขมือได้)</p>
       </div>
 
       <!-- 2. Section ภาพ Protocol / เอกสารแนบ -->
@@ -65,7 +76,6 @@
           📋 + ถ่ายภาพ Protocol เพิ่ม
         </button>
 
-        <!-- Preview Grid สำหรับ Protocol -->
         <div id="protocolGrid" class="grid grid-cols-3 gap-2 mt-2.5 thumb-grid"></div>
       </div>
 
@@ -83,7 +93,6 @@
           📸 + ถ่ายภาพใบสั่งยา (ถ่ายได้หลายหน้า)
         </button>
 
-        <!-- Preview Grid สำหรับ ใบสั่งยา -->
         <div id="prescriptionGrid" class="grid grid-cols-3 gap-2 mt-2.5 thumb-grid"></div>
       </div>
 
@@ -107,7 +116,7 @@
 
   </div>
 
-  <!-- Modal สำหรับกดขยายดูรูปภาพเต็มจอ (Image Preview Lightbox) -->
+  <!-- Modal สำหรับกดขยายดูรูปภาพเต็มจอ -->
   <div id="imageModal" class="fixed inset-0 bg-black/90 z-50 hidden flex flex-col justify-between p-4 backdrop-blur-sm" onclick="closeModal()">
     <div class="flex justify-between items-center text-white pt-2 px-2">
       <span id="modalTitle" class="text-sm font-medium">ตัวอย่างรูปภาพ</span>
@@ -126,59 +135,111 @@
     </div>
   </div>
 
-  <!-- Canvas ซ่อนไว้ใช้ประมวลผลรูปภาพ (B/W + Contrast) -->
+  <!-- Canvas ซ่อนไว้ใช้ประมวลผลรูปภาพ -->
   <canvas id="processCanvas" class="hidden"></canvas>
+  <canvas id="barcodeCropCanvas" class="hidden"></canvas>
 
   <script>
-    // Executable Web App URL จาก Apps Script
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwPuk8-ush98U8MuBWTJTz5R8T6WBmrgzJxUpxA-ewdJ1Fr6Or-DnpaWgSaxj_gujr3Yg/exec";
 
     let protocolImages = [];
     let prescriptionImages = [];
     
-    // ตัวแปรเก็บสถานะการเปิดดู Modal
     let currentModalType = null;
     let currentModalIndex = null;
 
-    // --- 1. ระบบถอดรหัสบาร์โค้ดจากภาพถ่ายสติ๊กเกอร์ ---
+    // --- 1. ระบบ Crop อัตราส่วน 2.5x5 cm + ปรับขาวดำ + ถอดรหัส บาร์โค้ด ---
     function processBarcodeImage(event) {
       const file = event.target.files[0];
       if (!file) return;
 
       const statusEl = document.getElementById('barcodeStatus');
       statusEl.className = "text-xs text-blue-600 font-semibold animate-pulse";
-      statusEl.innerText = "⏳ กำลังอ่านรหัสบาร์โค้ดจากรูปภาพ...";
+      statusEl.innerText = "⏳ กำลังประมวลผลและอ่านบาร์โค้ด...";
 
       const reader = new FileReader();
       reader.onload = function(e) {
         const img = new Image();
         img.onload = function() {
-          const codeReader = new ZXing.BrowserMultiFormatReader();
-          
-          codeReader.decodeFromImageElement(img)
-            .then(result => {
-              if (result && result.text) {
-                const cleanedHN = result.text.trim().toUpperCase();
-                document.getElementById('hnInput').value = cleanedHN;
-                statusEl.className = "text-xs text-green-600 font-semibold";
-                statusEl.innerText = "✅ อ่านบาร์โค้ดสำเร็จ: " + cleanedHN;
-              } else {
-                throw new Error("ไม่พบรหัสบาร์โค้ด");
-              }
-            })
-            .catch(err => {
-              console.warn("ZXing Scan Failed:", err);
-              statusEl.className = "text-xs text-amber-600 font-semibold";
-              statusEl.innerText = "⚠️ ไม่สามารถอ่านบาร์โค้ดได้ กรุณาพิมพ์เลข HN ด้วยตนเอง";
-            });
+          const canvas = document.getElementById('barcodeCropCanvas');
+          const ctx = canvas.getContext('2d');
+
+          // อัตราส่วนสติ๊กเกอร์ 5 : 2.5 (อัตราส่วน 2:1)
+          // ตัดเอาพื้นที่เฉพาะบริเวณตรงกลางภาพความกว้าง 80% และปรับความสูงตามสเกล 2:1
+          const cropWidth = img.width * 0.85;
+          const cropHeight = cropWidth / 2; // อัตราส่วน 2:1
+          const startX = (img.width - cropWidth) / 2;
+          const startY = (img.height - cropHeight) / 2;
+
+          // กำหนดขนาด Output กำหนดให้อยู่ช่วง 800x400px (ความคมชัดกำลังดีสำหรับการแกะบาร์โค้ด)
+          canvas.width = 800;
+          canvas.height = 400;
+
+          // วาดภาพเฉพาะส่วนสติ๊กเกอร์ลงบน Canvas
+          ctx.drawImage(img, startX, startY, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
+
+          // ปรับปรุงภาพให้เป็น B/W High Contrast (เร่งความเข้มลายเส้นบาร์โค้ด)
+          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imgData.data;
+
+          for (let i = 0; i < data.length; i += 4) {
+            // คำนวณความสว่าง Grayscale
+            const avg = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
+            
+            // ใช้ Binarization Threshold (ถ้ามืดดึงให้เป็นดำเข้ม ถ้าสว่างเร่งเป็นขาวบริสุทธิ์)
+            const threshold = 125;
+            const val = avg < threshold ? 0 : 255;
+
+            data[i] = val;     // R
+            data[i + 1] = val; // G
+            data[i + 2] = val; // B
+          }
+
+          ctx.putImageData(imgData, 0, 0);
+
+          // แปลงเป็นรูปภาพเพื่อนำมาแสดง Preview
+          const processedStickerBase64 = canvas.toDataURL('image/jpeg', 0.9);
+          document.getElementById('stickerPreviewImg').src = processedStickerBase64;
+          document.getElementById('stickerPreviewContainer').classList.remove('hidden');
+
+          // นำรูปภาพที่ผ่านการปรับแต่งแล้วไปถอดรหัส บาร์โค้ด ด้วย ZXing
+          const processedImg = new Image();
+          processedImg.onload = function() {
+            const codeReader = new ZXing.BrowserMultiFormatReader();
+            codeReader.decodeFromImageElement(processedImg)
+              .then(result => {
+                if (result && result.text) {
+                  const cleanedHN = result.text.trim().toUpperCase();
+                  document.getElementById('hnInput').value = cleanedHN;
+                  statusEl.className = "text-xs text-green-600 font-bold";
+                  statusEl.innerText = "✅ อ่านบาร์โค้ดสำเร็จ: " + cleanedHN;
+                } else {
+                  throw new Error("ไม่พบรหัสบาร์โค้ด");
+                }
+              })
+              .catch(err => {
+                console.warn("Barcode Read Error:", err);
+                statusEl.className = "text-xs text-amber-600 font-semibold";
+                statusEl.innerText = "⚠️ ระบบอ่านบาร์โค้ดไม่ออก (สามารถพิมพ์เลข HN เองได้เลยครับ)";
+              });
+          };
+          processedImg.src = processedStickerBase64;
+
         };
         img.src = e.target.result;
       };
       reader.readAsDataURL(file);
-      event.target.value = ""; // Reset input
+      event.target.value = ""; 
     }
 
-    // --- 2. ระบบประมวลผลภาพถ่าย (Adjust Contrast + Grayscale) ---
+    function clearStickerPreview() {
+      document.getElementById('stickerPreviewContainer').classList.add('hidden');
+      document.getElementById('stickerPreviewImg').src = "";
+      document.getElementById('barcodeStatus').className = "text-xs text-slate-500 mt-2";
+      document.getElementById('barcodeStatus').innerText = "📷 ถ่ายรูปสติ๊กเกอร์บาร์โค้ดเพื่อดึงเลข HN อัตโนมัติ (แก้ไขมือได้)";
+    }
+
+    // --- 2. ระบบประมวลผลภาพถ่าย Protocol & ใบสั่งยา ---
     function handleImageUpload(event, type) {
       const file = event.target.files[0];
       if (!file) return;
@@ -190,7 +251,6 @@
           const canvas = document.getElementById('processCanvas');
           const ctx = canvas.getContext('2d');
 
-          // ย่อขนาดภาพไม่ให้ใหญ่เกินไป (Max Width 1600px)
           const maxWidth = 1600;
           let width = img.width;
           let height = img.height;
@@ -204,7 +264,6 @@
           canvas.height = height;
           ctx.drawImage(img, 0, 0, width, height);
 
-          // ปรับความชัดขาวดำ (High Contrast Document)
           const imgData = ctx.getImageData(0, 0, width, height);
           const data = imgData.data;
 
@@ -212,9 +271,9 @@
             const avg = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
             let val = avg;
             if (val > 140) {
-              val = Math.min(255, val * 1.15); // เร่งพื้นหลังขาว
+              val = Math.min(255, val * 1.15);
             } else {
-              val = Math.max(0, val * 0.75);  // เร่งรอยหมึกดำ
+              val = Math.max(0, val * 0.75);
             }
             data[i] = val;
             data[i + 1] = val;
@@ -266,7 +325,6 @@
       });
     }
 
-    // เปิดดูรูปใหญ่ใน Lightbox Modal
     function openModal(type, index) {
       currentModalType = type;
       currentModalIndex = index;
@@ -316,7 +374,7 @@
       }
     }
 
-    // --- 4. การส่งข้อมูลไปยัง Apps Script (HTTP POST Method) ---
+    // --- 4. การส่งข้อมูลไปยัง Apps Script ---
     function handleSubmit(e) {
       e.preventDefault();
       
@@ -347,22 +405,18 @@
         prescriptionImages: prescriptionImages
       };
 
-      // ส่งด้วย fetch API ผ่าน HTTP POST สำหรับการฝังภายนอก / Google Sites
       fetch(WEB_APP_URL, {
         method: 'POST',
-        mode: 'no-cors', // รองรับ Cross-Domain
+        mode: 'no-cors',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
       .then(() => {
-        // เนื่องจากใช้ mode: 'no-cors' จะถือว่าส่งเรียบร้อยแล้ว
         statusMsg.className = "mt-4 text-center text-green-600 font-semibold";
         statusMsg.innerText = "✅ ส่ง Order เรียบร้อยแล้ว!";
         
-        // Reset Form
         document.getElementById('orderForm').reset();
-        document.getElementById('barcodeStatus').className = "text-xs text-slate-500";
-        document.getElementById('barcodeStatus').innerText = "📷 ถ่ายรูปสติ๊กเกอร์บาร์โค้ดเพื่อดึงเลข HN อัตโนมัติ (แก้ไขมือได้)";
+        clearStickerPreview();
         
         protocolImages = [];
         prescriptionImages = [];
