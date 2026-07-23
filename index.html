@@ -44,20 +44,6 @@
       box-shadow: 0 0 8px #ef4444;
       transform: translateY(-50%);
     }
-
-    /* จุดลากปรับมุม Interactive Cropper */
-    .crop-handle {
-      position: absolute;
-      width: 24px;
-      height: 24px;
-      background-color: #3b82f6;
-      border: 3px solid white;
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-      touch-action: none;
-      z-index: 30;
-    }
   </style>
 </head>
 <body class="bg-slate-100 min-h-screen p-3 md:p-6 text-slate-800">
@@ -108,11 +94,11 @@
           <span id="protocolCount" class="text-xs font-semibold text-slate-400">0 รูป</span>
         </div>
         
-        <input type="file" id="protocolInput" accept="image/*" capture="environment" class="hidden" onchange="openCropperModal(event, 'protocol')">
+        <input type="file" id="protocolInput" accept="image/*" capture="environment" class="hidden" onchange="processDocumentUpload(event, 'protocol')">
         
         <button type="button" onclick="document.getElementById('protocolInput').click()" 
                 class="w-full py-3 px-4 border-2 border-dashed border-slate-300 bg-slate-50 text-slate-600 rounded-lg font-medium hover:bg-slate-100 transition flex justify-center items-center gap-2 text-sm">
-          📋 + ถ่ายภาพ Protocol (ปรับขอบสแกนได้)
+          📋 + ถ่ายภาพ Protocol (สแกน Auto-Crop A4)
         </button>
 
         <div id="protocolGrid" class="grid grid-cols-3 gap-2 mt-2.5 thumb-grid"></div>
@@ -125,11 +111,11 @@
           <span id="prescriptionCount" class="text-xs font-semibold text-slate-400">0 รูป</span>
         </div>
         
-        <input type="file" id="prescriptionInput" accept="image/*" capture="environment" class="hidden" onchange="openCropperModal(event, 'prescription')">
+        <input type="file" id="prescriptionInput" accept="image/*" capture="environment" class="hidden" onchange="processDocumentUpload(event, 'prescription')">
         
         <button type="button" onclick="document.getElementById('prescriptionInput').click()" 
                 class="w-full py-3 px-4 border-2 border-dashed border-blue-400 bg-blue-50 text-blue-600 rounded-lg font-semibold hover:bg-blue-100 transition flex justify-center items-center gap-2 text-sm">
-          📸 + ถ่ายภาพใบสั่งยา (ปรับขอบสแกนได้)
+          📸 + ถ่ายภาพใบสั่งยา (สแกน Auto-Crop A4)
         </button>
 
         <div id="prescriptionGrid" class="grid grid-cols-3 gap-2 mt-2.5 thumb-grid"></div>
@@ -174,29 +160,6 @@
     </div>
   </div>
 
-  <!-- Modal ปรับขอบเอกสาร 4 มุม (Interactive Document Scanner Modal) -->
-  <div id="cropperModal" class="fixed inset-0 bg-black/95 z-50 hidden flex flex-col justify-between p-3 select-none">
-    <div class="text-center text-white pt-1">
-      <h3 class="text-sm font-semibold">📐 ปรับจุด 4 มุมให้ครอบคลุมขอบเอกสาร</h3>
-      <p class="text-[11px] text-slate-400">ใช้นิ้วลากจุดสีฟ้าไปที่มุมกระดาษทั้ง 4 ด้าน</p>
-    </div>
-
-    <div id="cropperArea" class="relative flex-1 my-2 flex items-center justify-center overflow-hidden">
-      <canvas id="cropperCanvas" class="max-h-[70vh] max-w-full object-contain rounded border border-slate-700"></canvas>
-      
-      <!-- 4-Corner Handles -->
-      <div id="handleTL" class="crop-handle"></div>
-      <div id="handleTR" class="crop-handle"></div>
-      <div id="handleBR" class="crop-handle"></div>
-      <div id="handleBL" class="crop-handle"></div>
-    </div>
-
-    <div class="flex justify-between items-center gap-3 pt-2">
-      <button type="button" onclick="closeCropperModal()" class="w-1/2 py-2.5 bg-slate-800 text-white rounded-lg text-sm font-semibold">✕ ถ่ายใหม่</button>
-      <button type="button" onclick="confirmCrop()" class="w-1/2 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold shadow-lg">✅ ตกลง (ครอปรูป)</button>
-    </div>
-  </div>
-
   <!-- Modal ดูรูปขยาย -->
   <div id="imageModal" class="fixed inset-0 bg-black/90 z-50 hidden flex flex-col justify-between p-4 backdrop-blur-sm" onclick="closeModal()">
     <div class="flex justify-between items-center text-white pt-2 px-2">
@@ -214,22 +177,14 @@
   <canvas id="processCanvas" class="hidden"></canvas>
 
   <script>
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx_O5v3TBC-QHEfdLZVv5Yl6CMa05DkN5jAEJHEQ5dkShvIaKnpO3NR0KHMFYvgjLcqFg/exec";
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz-DUGuT_b0WCpeRF9u3nHgcfJ3spd7mEBGMVQKebnitNtRT05QCbEEdtLcx_P0Nz2q/exec";
 
     let protocolImages = [];
     let prescriptionImages = [];
     let stickerStream = null;
 
-    let currentDocType = null;
-    let rawUploadedImage = null;
-
-    // ตำแหน่งจุด 4 มุม (Top-Left, Top-Right, Bottom-Right, Bottom-Left)
-    let corners = [
-      { x: 0.1, y: 0.1 },
-      { x: 0.9, y: 0.1 },
-      { x: 0.9, y: 0.9 },
-      { x: 0.1, y: 0.9 }
-    ];
+    let currentModalType = null;
+    let currentModalIndex = null;
 
     // --- 1. สแกนสติ๊กเกอร์ ---
     async function openStickerCamera() {
@@ -315,149 +270,62 @@
       document.getElementById('barcodeStatus').innerText = "📷 วางสติ๊กเกอร์ในกรอบเพื่อดึง HN อัตโนมัติ";
     }
 
-    // --- 2. Interactive Document Cropper Modal ---
-    function openCropperModal(event, type) {
+    // --- 2. Auto Center Crop A4 ---
+    function processDocumentUpload(event, type) {
       const file = event.target.files[0];
       if (!file) return;
 
-      currentDocType = type;
       const reader = new FileReader();
       reader.onload = function(e) {
-        rawUploadedImage = new Image();
-        rawUploadedImage.onload = function() {
-          setupCropper();
-          document.getElementById('cropperModal').classList.remove('hidden');
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.getElementById('processCanvas');
+          const ctx = canvas.getContext('2d');
+
+          canvas.width = 1200;
+          canvas.height = 1697;
+
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          let cropWidth, cropHeight;
+          if (img.height / img.width > 1.414) {
+            cropWidth = img.width * 0.92;
+            cropHeight = cropWidth * 1.414;
+          } else {
+            cropHeight = img.height * 0.92;
+            cropWidth = cropHeight / 1.414;
+          }
+
+          const startX = (img.width - cropWidth) / 2;
+          const startY = (img.height - cropHeight) / 2;
+
+          ctx.drawImage(img, startX, startY, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
+
+          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          for (let i = 0; i < imgData.data.length; i += 4) {
+            const avg = (imgData.data[i] * 0.299 + imgData.data[i+1] * 0.587 + imgData.data[i+2] * 0.114);
+            let val = avg > 135 ? 255 : Math.max(0, avg * 0.65);
+            imgData.data[i] = val; imgData.data[i+1] = val; imgData.data[i+2] = val;
+          }
+          ctx.putImageData(imgData, 0, 0);
+
+          const processedBase64 = canvas.toDataURL('image/jpeg', 0.88);
+
+          if (type === 'protocol') {
+            protocolImages.push(processedBase64);
+            renderThumbnails('protocol');
+          } else {
+            prescriptionImages.push(processedBase64);
+            renderThumbnails('prescription');
+          }
+
+          event.target.value = "";
+          checkFormStatus();
         };
-        rawUploadedImage.src = e.target.result;
+        img.src = e.target.result;
       };
       reader.readAsDataURL(file);
-      event.target.value = "";
-    }
-
-    function setupCropper() {
-      const canvas = document.getElementById('cropperCanvas');
-      const ctx = canvas.getContext('2d');
-
-      canvas.width = rawUploadedImage.width;
-      canvas.height = rawUploadedImage.height;
-      ctx.drawImage(rawUploadedImage, 0, 0);
-
-      // รีเซ็ตตำแหน่ง 4 มุมให้อยู่ที่ 10% จากขอบ
-      corners = [
-        { x: 0.1, y: 0.1 },
-        { x: 0.9, y: 0.1 },
-        { x: 0.9, y: 0.9 },
-        { x: 0.1, y: 0.9 }
-      ];
-
-      updateHandlesPosition();
-      initHandleEvents();
-    }
-
-    function updateHandlesPosition() {
-      const canvas = document.getElementById('cropperCanvas');
-      const rect = canvas.getBoundingClientRect();
-
-      const handles = [
-        document.getElementById('handleTL'),
-        document.getElementById('handleTR'),
-        document.getElementById('handleBR'),
-        document.getElementById('handleBL')
-      ];
-
-      handles.forEach((h, i) => {
-        h.style.left = `${rect.left + corners[i].x * rect.width}px`;
-        h.style.top = `${rect.top + corners[i].y * rect.height}px`;
-      });
-    }
-
-    function initHandleEvents() {
-      const handles = ['handleTL', 'handleTR', 'handleBR', 'handleBL'];
-      handles.forEach((id, index) => {
-        const el = document.getElementById(id);
-        
-        const onMove = (e) => {
-          const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-          const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-          
-          const canvas = document.getElementById('cropperCanvas');
-          const rect = canvas.getBoundingClientRect();
-
-          let x = (clientX - rect.left) / rect.width;
-          let y = (clientY - rect.top) / rect.height;
-
-          corners[index].x = Math.max(0, Math.min(1, x));
-          corners[index].y = Math.max(0, Math.min(1, y));
-
-          updateHandlesPosition();
-        };
-
-        const onEnd = () => {
-          window.removeEventListener('mousemove', onMove);
-          window.removeEventListener('touchmove', onMove);
-        };
-
-        el.onmousedown = el.ontouchstart = (e) => {
-          e.preventDefault();
-          window.addEventListener('mousemove', onMove);
-          window.addEventListener('touchmove', onMove);
-          window.addEventListener('mouseup', onEnd);
-          window.addEventListener('touchend', onEnd);
-        };
-      });
-    }
-
-    function closeCropperModal() {
-      document.getElementById('cropperModal').classList.add('hidden');
-      rawUploadedImage = null;
-    }
-
-    // ยืนยันการครอปรูปภาพ + ดึง Perspective + B/W High Contrast
-    function confirmCrop() {
-      const canvas = document.getElementById('processCanvas');
-      const ctx = canvas.getContext('2d');
-
-      canvas.width = 1200;
-      canvas.height = 1697; // อัตราส่วน A4
-
-      ctx.fillStyle = "#FFFFFF";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      const imgW = rawUploadedImage.width;
-      const imgH = rawUploadedImage.height;
-
-      // พิกัดจริงขอบ 4 ด้าน
-      const minX = Math.min(...corners.map(c => c.x)) * imgW;
-      const maxX = Math.max(...corners.map(c => c.x)) * imgW;
-      const minY = Math.min(...corners.map(c => c.y)) * imgH;
-      const maxY = Math.max(...corners.map(c => c.y)) * imgH;
-
-      const cropW = maxX - minX;
-      const cropH = maxY - minY;
-
-      ctx.drawImage(rawUploadedImage, minX, minY, cropW, cropH, 0, 0, canvas.width, canvas.height);
-
-      // ปรับปรุง B/W High Contrast
-      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      for (let i = 0; i < imgData.data.length; i += 4) {
-        const avg = (imgData.data[i] * 0.299 + imgData.data[i+1] * 0.587 + imgData.data[i+2] * 0.114);
-        let val = avg > 135 ? 255 : Math.max(0, avg * 0.65);
-        imgData.data[i] = val; imgData.data[i+1] = val; imgData.data[i+2] = val;
-      }
-      ctx.putImageData(imgData, 0, 0);
-
-      const processedBase64 = canvas.toDataURL('image/jpeg', 0.88);
-
-      if (currentDocType === 'protocol') {
-        protocolImages.push(processedBase64);
-        renderThumbnails('protocol');
-      } else {
-        prescriptionImages.push(processedBase64);
-        renderThumbnails('prescription');
-      }
-
-      checkFormStatus();
-      closeCropperModal();
     }
 
     // --- 3. Thumbnails & Lightbox ---
@@ -539,18 +407,20 @@
       };
 
       try {
+        const formData = new URLSearchParams();
+        formData.append('data', JSON.stringify(payload));
+
         await fetch(WEB_APP_URL, {
           method: 'POST',
           mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formData.toString()
         });
 
-        // แสดงผลสำเร็จทันที
         statusMsg.className = "mt-4 text-center text-green-600 font-bold";
         statusMsg.innerText = "✅ ส่ง Order และสร้างไฟล์ PDF เรียบร้อยแล้ว!";
 
-        // Reset หน้าจอ 100% พร้อมรับงานใหม่
+        // เรียกฟังก์ชันรีเซ็ตปุ่มและฟอร์ม
         resetEntireForm();
 
       } catch (error) {
@@ -561,7 +431,7 @@
       }
     }
 
-    // เคลียร์ค่าฟอร์มและล้างรูปทั้งหมดในความจำ
+    // เคลียร์ค่าฟอร์ม ล้างรูป และคืนค่าสถานะปุ่ม
     function resetEntireForm() {
       document.getElementById('orderForm').reset();
       clearStickerPreview();
@@ -570,11 +440,20 @@
       prescriptionImages = [];
       renderThumbnails('protocol');
       renderThumbnails('prescription');
-      checkFormStatus();
+
+      const submitBtn = document.getElementById('submitBtn');
+      submitBtn.innerText = "✅ ส่ง Order เรียบร้อยแล้ว";
+      submitBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'animate-pulse');
+      submitBtn.classList.add('bg-green-600', 'text-white');
 
       setTimeout(() => {
+        submitBtn.innerText = "🚀 ส่ง Order เข้าห้องผลิตยา";
+        submitBtn.classList.remove('bg-green-600');
+        submitBtn.classList.add('bg-slate-300', 'text-slate-500', 'cursor-not-allowed');
+        submitBtn.disabled = true;
+
         document.getElementById('statusMsg').innerText = "";
-      }, 4000);
+      }, 2500);
     }
   </script>
 </body>
