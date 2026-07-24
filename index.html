@@ -177,14 +177,11 @@
   <canvas id="processCanvas" class="hidden"></canvas>
 
   <script>
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx1Tl98d_BO1MwrHwzappLUFIXr15Rb_1TLZoK2p3vUO9fuw9QZ_Edd2TfgG-rIs8z-iw/exec";
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzf4XYEA3uIE5UmubxLSeGaHROEPtRpr1nzafD0uo2vAYtRKr94sMNUEfxHCvn33F5YMQ/exec";
 
     let protocolImages = [];
     let prescriptionImages = [];
     let stickerStream = null;
-
-    let currentModalType = null;
-    let currentModalIndex = null;
 
     // --- 1. สแกนสติ๊กเกอร์ ---
     async function openStickerCamera() {
@@ -231,7 +228,7 @@
       }
       ctx.putImageData(imgData, 0, 0);
 
-      const base64 = canvas.toDataURL('image/jpeg', 0.9);
+      const base64 = canvas.toDataURL('image/jpeg', 0.8);
       document.getElementById('stickerPreviewImg').src = base64;
       document.getElementById('stickerPreviewContainer').classList.remove('hidden');
 
@@ -282,8 +279,9 @@
           const canvas = document.getElementById('processCanvas');
           const ctx = canvas.getContext('2d');
 
-          canvas.width = 1200;
-          canvas.height = 1697;
+          // ย่อขนาดภาพเป็น 900x1272 px เพื่อให้ส่งข้าม GitHub Pages รวดเร็ว ไม่ติดเน็ตช้า
+          canvas.width = 900;
+          canvas.height = 1272;
 
           ctx.fillStyle = "#FFFFFF";
           ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -310,7 +308,7 @@
           }
           ctx.putImageData(imgData, 0, 0);
 
-          const processedBase64 = canvas.toDataURL('image/jpeg', 0.88);
+          const processedBase64 = canvas.toDataURL('image/jpeg', 0.7);
 
           if (type === 'protocol') {
             protocolImages.push(processedBase64);
@@ -382,7 +380,7 @@
       }
     }
 
-    // --- 4. การส่งข้อมูล (ใช้ text/plain แก้ปัญหา CORS + no-cors Data Loss) ---
+    // --- 4. การส่งข้อมูลจาก GitHub Pages ข้ามไป Google Apps Script ---
     async function handleSubmit(e) {
       e.preventDefault();
       
@@ -407,12 +405,15 @@
       };
 
       try {
-        // ใช้ text/plain ส่ง JSON ตรงๆ ผ่าน no-cors ทะลุเข้า Apps Script ได้ 100%
+        // ใช้ URLSearchParams แปลงข้อมูลเป็น Form Parameters ส่งผ่าน CORS ได้ 100%
+        const params = new URLSearchParams();
+        params.append('data', JSON.stringify(payload));
+
         await fetch(WEB_APP_URL, {
           method: 'POST',
           mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify(payload)
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params.toString()
         });
 
         statusMsg.className = "mt-4 text-center text-green-600 font-bold";
@@ -428,7 +429,6 @@
       }
     }
 
-    // เคลียร์ค่าฟอร์ม ล้างรูป และคืนค่าสถานะปุ่ม
     function resetEntireForm() {
       document.getElementById('orderForm').reset();
       clearStickerPreview();
