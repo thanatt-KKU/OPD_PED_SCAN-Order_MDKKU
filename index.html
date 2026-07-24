@@ -177,6 +177,7 @@
   <canvas id="processCanvas" class="hidden"></canvas>
 
   <script>
+    // ⚠️ ตรวจสอบ URL นี้ให้ตรงกับ Web App URL ล่าสุดจากหน้า Deploy Apps Script
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyvVQY4IzdMZJuqWhJgqx3CbjTi3wGMdXNwAQU8853lCxE7XghDchVzVaJSoNxhtNExkw/exec";
 
     let protocolImages = [];
@@ -279,7 +280,7 @@
           const canvas = document.getElementById('processCanvas');
           const ctx = canvas.getContext('2d');
 
-          // ย่อขนาดภาพเป็น 900x1272 px เพื่อให้ส่งข้าม GitHub Pages รวดเร็ว ไม่ติดเน็ตช้า
+          // ย่อสเกลพอดีใช้งาน ให้ไฟล์เล็ก ส่งข้ามเครือข่ายเร็ว
           canvas.width = 900;
           canvas.height = 1272;
 
@@ -380,7 +381,7 @@
       }
     }
 
-    // --- 4. การส่งข้อมูลจาก GitHub Pages ข้ามไป Google Apps Script ---
+    // --- 4. ฟังก์ชันส่งข้อมูลปรับแก้สำหรับการส่งจาก GitHub Pages ---
     async function handleSubmit(e) {
       e.preventDefault();
       
@@ -405,7 +406,7 @@
       };
 
       try {
-        // ใช้ URLSearchParams แปลงข้อมูลเป็น Form Parameters ส่งผ่าน CORS ได้ 100%
+        // ใช้ URLSearchParams ในการบรรจุ JSON Data ส่งข้ามโดเมน
         const params = new URLSearchParams();
         params.append('data', JSON.stringify(payload));
 
@@ -416,6 +417,7 @@
           body: params.toString()
         });
 
+        // แสดงผลสำเร็จทันที
         statusMsg.className = "mt-4 text-center text-green-600 font-bold";
         statusMsg.innerText = "✅ ส่ง Order และสร้างไฟล์ PDF เรียบร้อยแล้ว!";
 
@@ -429,6 +431,7 @@
       }
     }
 
+    // เคลียร์ฟอร์ม และคืนค่าสถานะปุ่ม
     function resetEntireForm() {
       document.getElementById('orderForm').reset();
       clearStickerPreview();
