@@ -51,14 +51,9 @@
   <div class="max-w-md mx-auto w-full bg-white rounded-xl shadow-lg overflow-hidden p-5">
     
     <!-- Header -->
-    <div class="mb-4">
-      <div class="text-xs text-slate-400 font-medium text-left mb-1">
-        คณะแพทยศาสตร์ โรงพยาบาลศรีนครินทร์
-      </div>
-      <div class="text-center mt-2">
-        <h1 class="text-2xl font-bold text-blue-600">OPD PED Order Sender</h1>
-        <p class="text-xs text-slate-500 mt-1">ระบบถ่ายภาพและส่งใบสั่งยาเข้าห้องผลิตยา</p>
-      </div>
+    <div class="mb-5 text-center">
+      <h1 class="text-2xl font-bold text-blue-600">OPD PED Order Sender</h1>
+      <p class="text-xs text-slate-500 mt-1">ระบบถ่ายภาพและส่งใบสั่งยาเข้าห้องผลิตยา</p>
     </div>
 
     <form id="orderForm" onsubmit="handleSubmit(event)" class="space-y-4">
@@ -100,22 +95,22 @@
         
         <!-- ตัวเลือก Quick Buttons -->
         <div class="flex gap-1.5 mb-2">
-          <button type="button" onclick="selectWard('2จ(OPD)')" 
-                  class="ward-btn flex-1 py-1.5 px-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold hover:bg-blue-50 hover:border-blue-400 active:bg-blue-100 transition shadow-sm">
+          <button type="button" onclick="selectWard(this, '2จ(OPD)')" 
+                  class="ward-btn flex-1 py-1.5 px-2 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold hover:bg-blue-50 hover:border-blue-400 transition shadow-sm">
             2จ(OPD)
           </button>
-          <button type="button" onclick="selectWard('3ง')" 
-                  class="ward-btn flex-1 py-1.5 px-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold hover:bg-blue-50 hover:border-blue-400 active:bg-blue-100 transition shadow-sm">
+          <button type="button" onclick="selectWard(this, '3ง')" 
+                  class="ward-btn flex-1 py-1.5 px-2 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold hover:bg-blue-50 hover:border-blue-400 transition shadow-sm">
             3ง
           </button>
-          <button type="button" onclick="selectWard('2ง')" 
-                  class="ward-btn flex-1 py-1.5 px-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold hover:bg-blue-50 hover:border-blue-400 active:bg-blue-100 transition shadow-sm">
+          <button type="button" onclick="selectWard(this, '2ง')" 
+                  class="ward-btn flex-1 py-1.5 px-2 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold hover:bg-blue-50 hover:border-blue-400 transition shadow-sm">
             2ง
           </button>
         </div>
 
         <!-- Input พิมพ์ระบุเอง -->
-        <input type="text" id="wardInput" placeholder="หรือพิมพ์ระบุ Ward เองที่นี่..." 
+        <input type="text" id="wardInput" placeholder="หรือพิมพ์ระบุ Ward เองที่นี่..." oninput="clearWardActiveState()"
                class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs bg-white">
       </div>
 
@@ -136,7 +131,7 @@
         <div id="protocolGrid" class="grid grid-cols-3 gap-2 mt-2.5 thumb-grid"></div>
       </div>
 
-      <!-- 4. Section ภาพใบสั่งยา -->
+      <!-- 4. Section ภาพใบสั่งยา (ปรับปุ่มเป็นสีม่วงอ่อน Pastel) -->
       <div class="border-t pt-3">
         <div class="flex justify-between items-center mb-1.5">
           <label class="block text-sm font-semibold text-slate-700">2. ถ่ายรูปใบสั่งยา <span class="text-red-500">*</span></label>
@@ -146,7 +141,7 @@
         <input type="file" id="prescriptionInput" accept="image/*" capture="environment" class="hidden" onchange="processDocumentUpload(event, 'prescription')">
         
         <button type="button" onclick="document.getElementById('prescriptionInput').click()" 
-                class="w-full py-3 px-4 border border-amber-300 bg-amber-100 text-amber-900 rounded-lg font-bold hover:bg-amber-200 active:scale-[0.99] transition flex justify-center items-center gap-2 text-sm shadow-sm">
+                class="w-full py-3 px-4 border border-purple-300 bg-purple-100 text-purple-900 rounded-lg font-bold hover:bg-purple-200 active:scale-[0.99] transition flex justify-center items-center gap-2 text-sm shadow-sm">
           📸 กดถ่ายภาพ ใบสั่งยา
         </button>
 
@@ -172,9 +167,10 @@
 
   </div>
 
-  <!-- Footer ด้านล่างสุด -->
-  <footer class="text-center text-[11px] text-slate-400 mt-6 mb-2">
-    พัฒนาโดยงานผลิตยา ฝ่ายเภสัชกรรม โรงพยาบาลศรีนครินทร์
+  <!-- Footer ด้านล่างสุด 2 บรรทัด -->
+  <footer class="text-center text-[11px] text-slate-400 mt-6 mb-2 leading-relaxed">
+    <p>พัฒนาโดยงานผลิตยา ฝ่ายเภสัชกรรม</p>
+    <p>โรงพยาบาลศรีนครินทร์ คณะแพทยศาสตร์ มหาวิทยาลัยขอนแก่น</p>
   </footer>
 
   <!-- Modal กล้องสติ๊กเกอร์ -->
@@ -220,9 +216,24 @@
     let prescriptionImages = [];
     let stickerStream = null;
 
-    // เลือก Ward จากปุ่ม
-    function selectWard(wardName) {
+    // เลือก Ward จากปุ่ม + เปลี่ยน Style ให้ปุ่มที่ถูกเลือกเป็นสีน้ำเงินเข้ม ตัวหนังสือขาว
+    function selectWard(btnElement, wardName) {
       document.getElementById('wardInput').value = wardName;
+      
+      const buttons = document.querySelectorAll('.ward-btn');
+      buttons.forEach(btn => {
+        btn.className = "ward-btn flex-1 py-1.5 px-2 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold hover:bg-blue-50 hover:border-blue-400 transition shadow-sm";
+      });
+
+      btnElement.className = "ward-btn flex-1 py-1.5 px-2 bg-blue-600 border border-blue-600 text-white rounded-lg text-xs font-semibold transition shadow-sm";
+    }
+
+    // ล้างสถานะปุ่ม Ward หากมีการพิมพ์ระบุเอง
+    function clearWardActiveState() {
+      const buttons = document.querySelectorAll('.ward-btn');
+      buttons.forEach(btn => {
+        btn.className = "ward-btn flex-1 py-1.5 px-2 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold hover:bg-blue-50 hover:border-blue-400 transition shadow-sm";
+      });
     }
 
     // --- 1. สแกนสติ๊กเกอร์ ---
@@ -482,6 +493,7 @@
     function resetEntireForm() {
       document.getElementById('orderForm').reset();
       clearStickerPreview();
+      clearWardActiveState();
       
       protocolImages = [];
       prescriptionImages = [];
