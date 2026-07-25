@@ -46,17 +46,22 @@
     }
   </style>
 </head>
-<body class="bg-slate-100 min-h-screen p-3 md:p-6 text-slate-800">
+<body class="bg-slate-100 min-h-screen p-3 md:p-6 text-slate-800 flex flex-col justify-between">
 
-  <div class="max-w-md mx-auto bg-white rounded-xl shadow-lg overflow-hidden p-5">
+  <div class="max-w-md mx-auto w-full bg-white rounded-xl shadow-lg overflow-hidden p-5">
     
     <!-- Header -->
-    <div class="text-center mb-5">
-      <h1 class="text-2xl font-bold text-blue-600">OPD PED Order Sender</h1>
-      <p class="text-xs text-slate-500 mt-1">ระบบถ่ายภาพและส่งใบสั่งยาเข้าห้องผลิตยา</p>
+    <div class="mb-4">
+      <div class="text-xs text-slate-400 font-medium text-left mb-1">
+        คณะแพทยศาสตร์ โรงพยาบาลศรีนครินทร์
+      </div>
+      <div class="text-center mt-2">
+        <h1 class="text-2xl font-bold text-blue-600">OPD PED Order Sender</h1>
+        <p class="text-xs text-slate-500 mt-1">ระบบถ่ายภาพและส่งใบสั่งยาเข้าห้องผลิตยา</p>
+      </div>
     </div>
 
-    <form id="orderForm" onsubmit="handleSubmit(event)" class="space-y-5">
+    <form id="orderForm" onsubmit="handleSubmit(event)" class="space-y-4">
       
       <!-- 1. ส่วนถ่ายรูปสติ๊กเกอร์ / สแกน HN -->
       <div class="bg-blue-50/60 p-3.5 rounded-xl border border-blue-100">
@@ -65,11 +70,11 @@
         </label>
         
         <div class="flex gap-2 mb-2">
-          <input type="text" id="hnInput" required placeholder="กรอก หรือ ถ่ายรูปสติ๊กเกอร์" 
-                 class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-lg uppercase font-bold bg-white">
+          <input type="text" id="hnInput" required placeholder="กรอกหรือถ่ายรูปบาร์โค้ด HN" 
+                 class="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm uppercase font-bold bg-white placeholder:text-xs placeholder:font-normal placeholder:text-slate-400">
           
           <button type="button" onclick="openStickerCamera()" 
-                  class="bg-blue-600 text-white px-3.5 py-2 rounded-lg font-semibold hover:bg-blue-700 transition flex items-center gap-1.5 shrink-0 shadow-sm text-sm">
+                  class="bg-blue-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-blue-700 transition flex items-center gap-1 shrink-0 shadow-sm text-xs">
             📸 ถ่ายสติ๊กเกอร์
           </button>
         </div>
@@ -87,25 +92,52 @@
         <p id="barcodeStatus" class="text-xs text-slate-500 mt-2">📷 วางสติ๊กเกอร์ในกรอบเพื่อดึง HN อัตโนมัติ</p>
       </div>
 
-      <!-- 2. Section ภาพ Protocol -->
-      <div class="border-t pt-4">
+      <!-- 2. ส่วนเลือก Ward ปลายทาง -->
+      <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+        <label class="block text-sm font-semibold mb-1.5 text-slate-700">
+          Ward ปลายทางที่จะส่งคนไข้ไปให้ยา
+        </label>
+        
+        <!-- ตัวเลือก Quick Buttons -->
+        <div class="flex gap-1.5 mb-2">
+          <button type="button" onclick="selectWard('2จ(OPD)')" 
+                  class="ward-btn flex-1 py-1.5 px-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold hover:bg-blue-50 hover:border-blue-400 active:bg-blue-100 transition shadow-sm">
+            2จ(OPD)
+          </button>
+          <button type="button" onclick="selectWard('3ง')" 
+                  class="ward-btn flex-1 py-1.5 px-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold hover:bg-blue-50 hover:border-blue-400 active:bg-blue-100 transition shadow-sm">
+            3ง
+          </button>
+          <button type="button" onclick="selectWard('2ง')" 
+                  class="ward-btn flex-1 py-1.5 px-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold hover:bg-blue-50 hover:border-blue-400 active:bg-blue-100 transition shadow-sm">
+            2ง
+          </button>
+        </div>
+
+        <!-- Input พิมพ์ระบุเอง -->
+        <input type="text" id="wardInput" placeholder="หรือพิมพ์ระบุ Ward เองที่นี่..." 
+               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs bg-white">
+      </div>
+
+      <!-- 3. Section ภาพ Protocol -->
+      <div class="border-t pt-3">
         <div class="flex justify-between items-center mb-1.5">
-          <label class="block text-sm font-semibold text-slate-700">1. ภาพ Protocol / เอกสารแนบ (ถ้ามี)</label>
+          <label class="block text-sm font-semibold text-slate-700">1. ถ่ายภาพ Protocol / เอกสารแนบ (ถ้ามี)</label>
           <span id="protocolCount" class="text-xs font-semibold text-slate-400">0 รูป</span>
         </div>
         
         <input type="file" id="protocolInput" accept="image/*" capture="environment" class="hidden" onchange="processDocumentUpload(event, 'protocol')">
         
         <button type="button" onclick="document.getElementById('protocolInput').click()" 
-                class="w-full py-3 px-4 border-2 border-dashed border-slate-300 bg-slate-50 text-slate-600 rounded-lg font-medium hover:bg-slate-100 transition flex justify-center items-center gap-2 text-sm">
-          📋 + ถ่ายภาพ Protocol (สแกน Auto-Crop A4)
+                class="w-full py-3 px-4 border border-amber-300 bg-amber-100 text-amber-900 rounded-lg font-semibold hover:bg-amber-200 active:scale-[0.99] transition flex justify-center items-center gap-2 text-sm shadow-sm">
+          📸 กดถ่ายภาพ Protocol
         </button>
 
         <div id="protocolGrid" class="grid grid-cols-3 gap-2 mt-2.5 thumb-grid"></div>
       </div>
 
-      <!-- 3. Section ภาพใบสั่งยา -->
-      <div class="border-t pt-4">
+      <!-- 4. Section ภาพใบสั่งยา -->
+      <div class="border-t pt-3">
         <div class="flex justify-between items-center mb-1.5">
           <label class="block text-sm font-semibold text-slate-700">2. ถ่ายรูปใบสั่งยา <span class="text-red-500">*</span></label>
           <span id="prescriptionCount" class="text-xs font-semibold text-slate-400">0 รูป</span>
@@ -114,21 +146,21 @@
         <input type="file" id="prescriptionInput" accept="image/*" capture="environment" class="hidden" onchange="processDocumentUpload(event, 'prescription')">
         
         <button type="button" onclick="document.getElementById('prescriptionInput').click()" 
-                class="w-full py-3 px-4 border-2 border-dashed border-blue-400 bg-blue-50 text-blue-600 rounded-lg font-semibold hover:bg-blue-100 transition flex justify-center items-center gap-2 text-sm">
-          📸 + ถ่ายภาพใบสั่งยา (สแกน Auto-Crop A4)
+                class="w-full py-3 px-4 border border-amber-300 bg-amber-100 text-amber-900 rounded-lg font-bold hover:bg-amber-200 active:scale-[0.99] transition flex justify-center items-center gap-2 text-sm shadow-sm">
+          📸 กดถ่ายภาพ ใบสั่งยา
         </button>
 
         <div id="prescriptionGrid" class="grid grid-cols-3 gap-2 mt-2.5 thumb-grid"></div>
       </div>
 
-      <!-- 4. หมายเหตุเพิ่มเติม -->
-      <div class="border-t pt-4">
+      <!-- 5. หมายเหตุเพิ่มเติม -->
+      <div class="border-t pt-3">
         <label class="block text-sm font-semibold mb-1 text-slate-700">หมายเหตุถึงเภสัชกร (ถ้ามี)</label>
         <textarea id="noteInput" rows="2" placeholder="เช่น STAT, ยาด่วน, เปลี่ยน dose..." 
                   class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"></textarea>
       </div>
 
-      <!-- 5. ปุ่มกดส่งข้อมูล -->
+      <!-- 6. ปุ่มกดส่งข้อมูล -->
       <button type="submit" id="submitBtn" disabled 
               class="w-full bg-slate-300 text-slate-500 py-3 rounded-xl font-bold text-lg cursor-not-allowed transition shadow-none">
         🚀 ส่ง Order เข้าห้องผลิตยา
@@ -139,6 +171,11 @@
     <div id="statusMsg" class="mt-4 text-center font-semibold text-sm"></div>
 
   </div>
+
+  <!-- Footer ด้านล่างสุด -->
+  <footer class="text-center text-[11px] text-slate-400 mt-6 mb-2">
+    พัฒนาโดยงานผลิตยา ฝ่ายเภสัชกรรม โรงพยาบาลศรีนครินทร์
+  </footer>
 
   <!-- Modal กล้องสติ๊กเกอร์ -->
   <div id="stickerCameraModal" class="fixed inset-0 bg-black z-50 hidden flex flex-col justify-between overflow-hidden">
@@ -177,12 +214,16 @@
   <canvas id="processCanvas" class="hidden"></canvas>
 
   <script>
-    // ⚠️ ตรวจสอบ URL นี้ให้ตรงกับ Web App URL ล่าสุดจากหน้า Deploy Apps Script
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw20tNWXch387NFm8CfWm-5rKWYndAouRSe0bwkgE19bUfxpgP-262qs4OJZLIJodoJBw/exec";
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw9HYBaGM_gGvARD6B2kdcnrO50QZxPJEmLHvh7FMpfSdOBzU62wsQhx4VKCP_ARMyiGQ/exec";
 
     let protocolImages = [];
     let prescriptionImages = [];
     let stickerStream = null;
+
+    // เลือก Ward จากปุ่ม
+    function selectWard(wardName) {
+      document.getElementById('wardInput').value = wardName;
+    }
 
     // --- 1. สแกนสติ๊กเกอร์ ---
     async function openStickerCamera() {
@@ -268,56 +309,71 @@
       document.getElementById('barcodeStatus').innerText = "📷 วางสติ๊กเกอร์ในกรอบเพื่อดึง HN อัตโนมัติ";
     }
 
-   // --- 2. Process Document Upload (ปรับให้เต็มแผ่น A4 ไม่หดรูป) ---
-function processDocumentUpload(event, type) {
-  const file = event.target.files[0];
-  if (!file) return;
+    // --- 2. Process Document Upload (สแกนฉลาด: ครอปตัดพื้นหลัง + ล้างพื้นหลังขาวเพียว) ---
+    function processDocumentUpload(event, type) {
+      const file = event.target.files[0];
+      if (!file) return;
 
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const img = new Image();
-    img.onload = function() {
-      const canvas = document.getElementById('processCanvas');
-      const ctx = canvas.getContext('2d');
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.getElementById('processCanvas');
+          const ctx = canvas.getContext('2d');
 
-      // กำหนดความละเอียดมาตรฐาน A4 (สัดส่วน 1 : 1.414)
-      canvas.width = 1240;
-      canvas.height = 1754;
+          const targetW = 1240;
+          const targetH = 1754;
 
-      ctx.fillStyle = "#FFFFFF";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+          canvas.width = targetW;
+          canvas.height = targetH;
 
-      // วาดรูปให้ขยายเต็มความกว้างและความสูงของ Canvas พอดี (Full Fit)
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(0, 0, targetW, targetH);
 
-      // ปรับความคมชัดและปรับพื้นหลังให้ขาวสะอาด (Thresholding)
-      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      for (let i = 0; i < imgData.data.length; i += 4) {
-        const avg = (imgData.data[i] * 0.299 + imgData.data[i+1] * 0.587 + imgData.data[i+2] * 0.114);
-        let val = avg > 140 ? 255 : Math.max(0, avg * 0.6);
-        imgData.data[i] = val; 
-        imgData.data[i+1] = val; 
-        imgData.data[i+2] = val;
-      }
-      ctx.putImageData(imgData, 0, 0);
+          const cropMarginX = img.width * 0.07;
+          const cropMarginY = img.height * 0.07;
+          
+          const cropWidth = img.width - (cropMarginX * 2);
+          const cropHeight = img.height - (cropMarginY * 2);
 
-      const processedBase64 = canvas.toDataURL('image/jpeg', 0.85);
+          ctx.drawImage(img, cropMarginX, cropMarginY, cropWidth, cropHeight, 0, 0, targetW, targetH);
 
-      if (type === 'protocol') {
-        protocolImages.push(processedBase64);
-        renderThumbnails('protocol');
-      } else {
-        prescriptionImages.push(processedBase64);
-        renderThumbnails('prescription');
-      }
+          const imgData = ctx.getImageData(0, 0, targetW, targetH);
+          const data = imgData.data;
 
-      event.target.value = "";
-      checkFormStatus();
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
+          for (let i = 0; i < data.length; i += 4) {
+            const brightness = (data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114);
+
+            if (brightness > 115) {
+              data[i] = 255;
+              data[i+1] = 255;
+              data[i+2] = 255;
+            } else {
+              const contrastVal = Math.max(0, brightness * 0.5);
+              data[i] = contrastVal;
+              data[i+1] = contrastVal;
+              data[i+2] = contrastVal;
+            }
+          }
+          ctx.putImageData(imgData, 0, 0);
+
+          const processedBase64 = canvas.toDataURL('image/jpeg', 0.85);
+
+          if (type === 'protocol') {
+            protocolImages.push(processedBase64);
+            renderThumbnails('protocol');
+          } else {
+            prescriptionImages.push(processedBase64);
+            renderThumbnails('prescription');
+          }
+
+          event.target.value = "";
+          checkFormStatus();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
 
     // --- 3. Thumbnails & Lightbox ---
     function renderThumbnails(type) {
@@ -373,11 +429,12 @@ function processDocumentUpload(event, type) {
       }
     }
 
-    // --- 4. ฟังก์ชันส่งข้อมูลปรับแก้สำหรับการส่งจาก GitHub Pages ---
+    // --- 4. ฟังก์ชันส่งข้อมูล ---
     async function handleSubmit(e) {
       e.preventDefault();
       
       const hn = document.getElementById('hnInput').value.trim().toUpperCase();
+      const ward = document.getElementById('wardInput').value.trim();
       const note = document.getElementById('noteInput').value.trim();
       const submitBtn = document.getElementById('submitBtn');
       const statusMsg = document.getElementById('statusMsg');
@@ -392,13 +449,13 @@ function processDocumentUpload(event, type) {
 
       const payload = {
         hn: hn,
+        ward: ward,
         note: note,
         protocolImages: protocolImages,
         prescriptionImages: prescriptionImages
       };
 
       try {
-        // ใช้ URLSearchParams ในการบรรจุ JSON Data ส่งข้ามโดเมน
         const params = new URLSearchParams();
         params.append('data', JSON.stringify(payload));
 
@@ -409,7 +466,6 @@ function processDocumentUpload(event, type) {
           body: params.toString()
         });
 
-        // แสดงผลสำเร็จทันที
         statusMsg.className = "mt-4 text-center text-green-600 font-bold";
         statusMsg.innerText = "✅ ส่ง Order และสร้างไฟล์ PDF เรียบร้อยแล้ว!";
 
@@ -423,7 +479,6 @@ function processDocumentUpload(event, type) {
       }
     }
 
-    // เคลียร์ฟอร์ม และคืนค่าสถานะปุ่ม
     function resetEntireForm() {
       document.getElementById('orderForm').reset();
       clearStickerPreview();
