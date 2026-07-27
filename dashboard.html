@@ -9,7 +9,31 @@
 </head>
 <body class="bg-slate-100 min-h-screen p-3 md:p-6 text-slate-800 flex flex-col justify-between">
 
-  <div class="max-w-md mx-auto w-full bg-white rounded-xl shadow-lg overflow-hidden p-5">
+  <!-- Modal สำหรับ Login/เข้าสู่ระบบ Dashboard -->
+  <div id="authModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-xs rounded-2xl shadow-2xl p-6 text-center space-y-4">
+      <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">
+        🔒
+      </div>
+      <div>
+        <h2 class="text-lg font-bold text-slate-800">เข้าสู่ระบบ Dashboard</h2>
+        <p class="text-xs text-slate-500 mt-1">กรุณากรอกรหัสผ่านเพื่อดูข้อมูล</p>
+      </div>
+      <div>
+        <input type="password" id="authPassInput" placeholder="กรอกรหัสผ่าน..." 
+               onkeydown="if(event.key==='Enter') verifyPass()"
+               class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-center text-lg tracking-widest font-bold focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <p id="authErrorMsg" class="text-xs text-red-500 font-semibold mt-2 hidden">❌ รหัสผ่านไม่ถูกต้อง</p>
+      </div>
+      <button onclick="verifyPass()" id="authSubmitBtn" 
+              class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow-md">
+        ตกลง
+      </button>
+    </div>
+  </div>
+
+  <!-- Content หลัก (ซ่อนไว้ก่อนยืนยันตัวตน) -->
+  <div id="mainContent" class="hidden max-w-md mx-auto w-full bg-white rounded-xl shadow-lg overflow-hidden p-5">
     
     <!-- Header + ปุ่มสลับกลับหน้าส่ง Order -->
     <div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-100">
@@ -41,7 +65,7 @@
         </button>
       </div>
 
-      <!-- สรุปจำแนกราย Ward (การ์ดเล็กพาสเทล) -->
+      <!-- สรุปจำแนกราย Ward -->
       <div class="grid grid-cols-4 gap-1.5 pt-2 border-t border-white/20 text-center">
         <div class="bg-amber-100 text-amber-900 rounded-lg p-1.5 shadow-sm">
           <p class="text-[10px] font-semibold opacity-90">2จ(OPD)</p>
@@ -67,9 +91,7 @@
       ⏳ กำลังโหลดข้อมูล...
     </div>
 
-    <div id="orderListContainer" class="space-y-2.5 max-h-[48vh] overflow-y-auto pr-1">
-      <!-- ข้อมูลรายการจะถูกดึงมาใส่ตรงนี้ด้วย JS -->
-    </div>
+    <div id="orderListContainer" class="space-y-2.5 max-h-[48vh] overflow-y-auto pr-1"></div>
 
     <div id="emptyState" class="hidden text-center py-8 text-slate-400 text-sm">
       📭 ไม่พบรายการ Order ในวันที่เลือก
@@ -77,38 +99,79 @@
 
   </div>
 
-  <!-- Footer ด้านล่างสุด -->
   <footer class="text-center text-[11px] text-slate-400 mt-6 mb-2 leading-relaxed">
     <p>พัฒนาโดยงานผลิตยา ฝ่ายเภสัชกรรม</p>
     <p>โรงพยาบาลศรีนครินทร์ คณะแพทยศาสตร์ มหาวิทยาลัยขอนแก่น</p>
   </footer>
 
   <script>
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxCoO9dQ6h9d8zheRs3L_Y_EelrjnHR8u6DNCjmW-TbWnRtkkOYGdN3P99uJBfdKfnD_Q/exec";
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwdlk0kWpdUHgLUCI8QrW3Fj4kBSJNkyGllBkbvx-CkG54K1uNE3ChprUbUOaAExo06rQ/exec";
 
-    // ตั้งค่า Default วันที่ให้เป็น "วันนี้"
     window.onload = function() {
       const today = new Date().toISOString().split('T')[0];
       document.getElementById('datePicker').value = today;
-      fetchOrders();
+
+      const savedPass = sessionStorage.getItem('appPassword');
+      if (savedPass) {
+        document.getElementById('authModal').classList.add('hidden');
+        document.getElementById('mainContent').classList.remove('hidden');
+        fetchOrders();
+      }
     };
 
-    // ฟังก์ชันคืนค่า Style สีพาสเทลตาม Ward
+    async function verifyPass() {
+      const pass = document.getElementById('authPassInput').value.trim();
+      const errEl = document.getElementById('authErrorMsg');
+      const btn = document.getElementById('authSubmitBtn');
+
+      if (!pass) return;
+
+      btn.disabled = true;
+      btn.innerText = "กำลังตรวจสอบ...";
+      errEl.classList.add('hidden');
+
+      try {
+        const res = await fetch(`${WEB_APP_URL}?action=verifyPassword&password=${encodeURIComponent(pass)}`);
+        const json = await res.json();
+
+        if (json.success) {
+          sessionStorage.setItem('appPassword', pass);
+          document.getElementById('authModal').classList.add('hidden');
+          document.getElementById('mainContent').classList.remove('hidden');
+          fetchOrders();
+        } else {
+          errEl.classList.remove('hidden');
+        }
+      } catch (err) {
+        alert("เกิดข้อผิดพลาดในการตรวจสอบรหัสผ่าน: " + err);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "ตกลง";
+      }
+    }
+
     function getWardBadgeStyle(ward) {
       const cleanWard = (ward || '').toString().trim().toUpperCase();
       
       if (cleanWard.includes('3ง') || cleanWard.includes('3N')) {
-        return 'bg-emerald-100 text-emerald-800 border-emerald-200'; // 3ง = เขียวพาสเทล
+        return 'bg-emerald-100 text-emerald-800 border-emerald-200';
       } else if (cleanWard.includes('2จ') || cleanWard.includes('2J') || cleanWard.includes('OPD')) {
-        return 'bg-amber-100 text-amber-800 border-amber-200';     // 2จ(OPD) = เหลืองพาสเทล
+        return 'bg-amber-100 text-amber-800 border-amber-200';
       } else if (cleanWard.includes('2ง') || cleanWard.includes('2N')) {
-        return 'bg-purple-100 text-purple-800 border-purple-200';   // 2ง = ม่วงพาสเทล
+        return 'bg-purple-100 text-purple-800 border-purple-200';
       } else {
-        return 'bg-slate-100 text-slate-700 border-slate-200';      // อื่นๆ = เทาพาสเทล
+        return 'bg-slate-100 text-slate-700 border-slate-200';
       }
     }
 
     async function fetchOrders() {
+      const savedPass = sessionStorage.getItem('appPassword');
+      if (!savedPass) {
+        document.getElementById('authModal').classList.remove('hidden');
+        document.getElementById('mainContent').classList.add('hidden');
+        return;
+      }
+
       const dateVal = document.getElementById('datePicker').value;
       const loading = document.getElementById('loadingState');
       const empty = document.getElementById('emptyState');
@@ -121,7 +184,6 @@
       empty.classList.add('hidden');
       container.innerHTML = "";
       
-      // รีเซ็ตตัวนับ
       totalCount.innerText = "0 เคส";
       document.getElementById('count2J').innerText = "0";
       document.getElementById('count3N').innerText = "0";
@@ -129,7 +191,7 @@
       document.getElementById('countOther').innerText = "0";
 
       try {
-        const response = await fetch(`${WEB_APP_URL}?action=getOrders&date=${dateVal}`);
+        const response = await fetch(`${WEB_APP_URL}?action=getOrders&date=${dateVal}&password=${encodeURIComponent(savedPass)}`);
         const result = await response.json();
 
         loading.classList.add('hidden');
@@ -143,7 +205,6 @@
             const wardStr = (item.ward || '').toString().trim();
             const wardUpper = wardStr.toUpperCase();
 
-            // นับยอดจำแนก Ward
             if (wardUpper.includes('2จ') || wardUpper.includes('2J') || wardUpper.includes('OPD')) {
               c2J++;
             } else if (wardUpper.includes('3ง') || wardUpper.includes('3N')) {
@@ -154,7 +215,6 @@
               cOther++;
             }
 
-            // สร้างการ์ดรายการ
             const badgeClass = getWardBadgeStyle(wardStr);
             const card = document.createElement('div');
             card.className = "p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1 shadow-sm hover:border-blue-300 transition";
@@ -174,7 +234,6 @@
             container.appendChild(card);
           });
 
-          // อัปเดตยอดนับแยกการ์ด
           document.getElementById('count2J').innerText = c2J;
           document.getElementById('count3N').innerText = c3N;
           document.getElementById('count2N').innerText = c2N;
