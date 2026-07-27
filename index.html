@@ -12,7 +12,6 @@
     .thumb-grid img { transition: transform 0.2s ease; }
     .thumb-grid img:hover { transform: scale(1.03); }
 
-    /* Overlay กล้องสติ๊กเกอร์ */
     .camera-overlay {
       position: absolute;
       inset: 0;
@@ -48,18 +47,42 @@
 </head>
 <body class="bg-slate-100 min-h-screen p-3 md:p-6 text-slate-800 flex flex-col justify-between">
 
+  <!-- Modal สำหรับ Login/เข้าสู่ระบบ -->
+  <div id="authModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-xs rounded-2xl shadow-2xl p-6 text-center space-y-4">
+      <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">
+        🔒
+      </div>
+      <div>
+        <h2 class="text-lg font-bold text-slate-800">OPD PED Order Sender</h2>
+        <p class="text-xs text-slate-500 mt-1">เข้าสู่ระบบส่งใบสั่งยาไปยังงานผลิตยา</p>
+      </div>
+      <div>
+        <input type="password" id="authPassInput" placeholder="กรอกรหัสผ่าน" 
+               onkeydown="if(event.key==='Enter') verifyPass()"
+               class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-center text-lg tracking-widest font-bold focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <p id="authErrorMsg" class="text-xs text-red-500 font-semibold mt-2 hidden">❌ รหัสผ่านไม่ถูกต้อง</p>
+      </div>
+      <button onclick="verifyPass()" id="authSubmitBtn" 
+              class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow-md">
+        เข้าสู่ระบบ
+      </button>
+    </div>
+  </div>
+
   <div class="max-w-md mx-auto w-full bg-white rounded-xl shadow-lg overflow-hidden p-5">
     
- <!-- ตรงส่วน Header ใน index.html -->
-<div class="mb-5 flex justify-between items-center">
-  <div>
-    <h1 class="text-2xl font-bold text-blue-600">OPD PED Order Sender</h1>
-    <p class="text-xs text-slate-500 mt-0.5">ระบบถ่ายภาพและส่งใบสั่งยาเข้าห้องผลิตยา</p>
-  </div>
-  <a href="dashboard.html" class="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-semibold border border-blue-200 transition shrink-0">
-    📊 ดูสรุปยอด
-  </a>
-</div>
+    <!-- Header -->
+    <div class="mb-5 flex justify-between items-center">
+      <div>
+        <h1 class="text-2xl font-bold text-blue-600">OPD PED Order Sender</h1>
+        <p class="text-xs text-slate-500 mt-0.5">ระบบถ่ายภาพและส่งใบสั่งยาเข้าห้องผลิตยา</p>
+      </div>
+      <a href="dashboard.html" class="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-semibold border border-blue-200 transition shrink-0">
+        📊 ดูสรุปยอด
+      </a>
+    </div>
+
     <form id="orderForm" onsubmit="handleSubmit(event)" class="space-y-4">
       
       <!-- 1. ส่วนถ่ายรูปสติ๊กเกอร์ / สแกน HN -->
@@ -97,7 +120,6 @@
           Ward ปลายทางที่จะส่งคนไข้ไปให้ยา
         </label>
         
-        <!-- ตัวเลือก Quick Buttons -->
         <div class="flex gap-1.5 mb-2">
           <button type="button" onclick="selectWard(this, '2จ(OPD)')" 
                   class="ward-btn flex-1 py-1.5 px-2 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold hover:bg-blue-50 hover:border-blue-400 transition shadow-sm">
@@ -113,7 +135,6 @@
           </button>
         </div>
 
-        <!-- Input พิมพ์ระบุเอง -->
         <input type="text" id="wardInput" placeholder="หรือพิมพ์ระบุ Ward เองที่นี่..." oninput="clearWardActiveState()"
                class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs bg-white">
       </div>
@@ -135,7 +156,7 @@
         <div id="protocolGrid" class="grid grid-cols-3 gap-2 mt-2.5 thumb-grid"></div>
       </div>
 
-      <!-- 4. Section ภาพใบสั่งยา (ปรับปุ่มเป็นสีม่วงอ่อน Pastel) -->
+      <!-- 4. Section ภาพใบสั่งยา -->
       <div class="border-t pt-3">
         <div class="flex justify-between items-center mb-1.5">
           <label class="block text-sm font-semibold text-slate-700">2. ถ่ายรูปใบสั่งยา <span class="text-red-500">*</span></label>
@@ -171,7 +192,6 @@
 
   </div>
 
-  <!-- Footer ด้านล่างสุด 2 บรรทัด -->
   <footer class="text-center text-[11px] text-slate-400 mt-6 mb-2 leading-relaxed">
     <p>พัฒนาโดยงานผลิตยา ฝ่ายเภสัชกรรม</p>
     <p>โรงพยาบาลศรีนครินทร์ คณะแพทยศาสตร์ มหาวิทยาลัยขอนแก่น</p>
@@ -220,7 +240,43 @@
     let prescriptionImages = [];
     let stickerStream = null;
 
-    // เลือก Ward จากปุ่ม + เปลี่ยน Style ให้ปุ่มที่ถูกเลือกเป็นสีน้ำเงินเข้ม ตัวหนังสือขาว
+    // ระบบ Authentication
+    window.onload = function() {
+      const savedPass = sessionStorage.getItem('appPassword');
+      if (savedPass) {
+        document.getElementById('authModal').classList.add('hidden');
+      }
+    };
+
+    async function verifyPass() {
+      const pass = document.getElementById('authPassInput').value.trim();
+      const errEl = document.getElementById('authErrorMsg');
+      const btn = document.getElementById('authSubmitBtn');
+
+      if (!pass) return;
+
+      btn.disabled = true;
+      btn.innerText = "กำลังตรวจสอบ...";
+      errEl.classList.add('hidden');
+
+      try {
+        const res = await fetch(`${WEB_APP_URL}?action=verifyPassword&password=${encodeURIComponent(pass)}`);
+        const json = await res.json();
+
+        if (json.success) {
+          sessionStorage.setItem('appPassword', pass);
+          document.getElementById('authModal').classList.add('hidden');
+        } else {
+          errEl.classList.remove('hidden');
+        }
+      } catch (err) {
+        alert("เกิดข้อผิดพลาดในการตรวจสอบรหัสผ่าน: " + err);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "ตกลง";
+      }
+    }
+
     function selectWard(btnElement, wardName) {
       document.getElementById('wardInput').value = wardName;
       
@@ -232,7 +288,6 @@
       btnElement.className = "ward-btn flex-1 py-1.5 px-2 bg-blue-600 border border-blue-600 text-white rounded-lg text-xs font-semibold transition shadow-sm";
     }
 
-    // ล้างสถานะปุ่ม Ward หากมีการพิมพ์ระบุเอง
     function clearWardActiveState() {
       const buttons = document.querySelectorAll('.ward-btn');
       buttons.forEach(btn => {
@@ -240,7 +295,7 @@
       });
     }
 
-    // --- 1. สแกนสติ๊กเกอร์ ---
+    // สแกนสติ๊กเกอร์
     async function openStickerCamera() {
       const modal = document.getElementById('stickerCameraModal');
       try {
@@ -324,7 +379,6 @@
       document.getElementById('barcodeStatus').innerText = "📷 วางสติ๊กเกอร์ในกรอบเพื่อดึง HN อัตโนมัติ";
     }
 
-    // --- 2. Process Document Upload (สแกนฉลาด: ครอปตัดพื้นหลัง + ล้างพื้นหลังขาวเพียว) ---
     function processDocumentUpload(event, type) {
       const file = event.target.files[0];
       if (!file) return;
@@ -390,7 +444,6 @@
       reader.readAsDataURL(file);
     }
 
-    // --- 3. Thumbnails & Lightbox ---
     function renderThumbnails(type) {
       const isProtocol = type === 'protocol';
       const images = isProtocol ? protocolImages : prescriptionImages;
@@ -444,10 +497,15 @@
       }
     }
 
-    // --- 4. ฟังก์ชันส่งข้อมูล ---
     async function handleSubmit(e) {
       e.preventDefault();
       
+      const savedPass = sessionStorage.getItem('appPassword');
+      if (!savedPass) {
+        document.getElementById('authModal').classList.remove('hidden');
+        return alert('กรุณาเข้าสู่ระบบก่อนส่งข้อมูล');
+      }
+
       const hn = document.getElementById('hnInput').value.trim().toUpperCase();
       const ward = document.getElementById('wardInput').value.trim();
       const note = document.getElementById('noteInput').value.trim();
@@ -463,6 +521,7 @@
       statusMsg.innerText = "กำลังอัปโหลดเอกสารและสร้างไฟล์ PDF...";
 
       const payload = {
+        password: savedPass,
         hn: hn,
         ward: ward,
         note: note,
