@@ -302,7 +302,7 @@
       });
     }
 
-    // เปิดกล้องสแกนสดด้วย Direct Video Stream
+    // เปิดกล้องสแกนสดปรับปรุงประสิทธิภาพ RAM
     async function openStickerCamera() {
       const modal = document.getElementById('stickerCameraModal');
       const statusEl = document.getElementById('barcodeStatus');
@@ -314,7 +314,7 @@
         modal.classList.remove('hidden');
         isScanningActive = true;
 
-        // กำหนดโฟกัสสแกนเจาะจงเฉพาะ Code 128 / Code 39 เพื่อความเร็วระดับสูงสุด
+        // กำหนด Decode Hints เน้นเฉพาะบาร์โค้ด Code 128 / Code 39
         const hints = new Map();
         hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
           ZXing.BarcodeFormat.CODE_128,
@@ -323,22 +323,48 @@
 
         codeReader = new ZXing.BrowserBarcodeReader(hints);
 
-        // ดึงกล้องหลังโดยตรงและเริ่มสแกนสดผ่าน <video> element
-        await codeReader.decodeFromVideoDevice(undefined, 'stickerVideo', (result, err) => {
+        // กำหนด Resolution ที่ HD (720p) เพื่อประหยัด RAM/GPU บนมือถือ
+        const constraints = {
+          video: {
+            facingMode: { exact: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        };
+
+        // เริ่มสแกนสดจาก Video Stream
+        await codeReader.decodeFromConstraints(constraints, 'stickerVideo', (result, err) => {
           if (result && result.text && isScanningActive) {
             const cleanedText = result.text.trim().toUpperCase();
 
             // ตรวจรูปแบบ AA0000
             if (HN_REGEX.test(cleanedText)) {
-              isScanningActive = false;
+              isScanningActive = false; // หยุดสแกนทันที
               
               document.getElementById('hnInput').value = cleanedText;
               statusEl.className = "text-xs text-green-600 font-bold";
               statusEl.innerText = "✅ อ่านบาร์โค้ดสำเร็จ: " + cleanedText;
 
-              closeStickerCamera();
+              // หน่วงเวลาเล็กน้อย 150ms เพื่อความนุ่มนวลของการปิด Modal
+              setTimeout(() => {
+                closeStickerCamera();
+              }, 150);
             }
           }
+        }).catch(() => {
+          // Fallback สำหรับอุปกรณ์ที่ไม่รองรับ facingMode exact
+          return codeReader.decodeFromVideoDevice(undefined, 'stickerVideo', (result, err) => {
+            if (result && result.text && isScanningActive) {
+              const cleanedText = result.text.trim().toUpperCase();
+              if (HN_REGEX.test(cleanedText)) {
+                isScanningActive = false;
+                document.getElementById('hnInput').value = cleanedText;
+                statusEl.className = "text-xs text-green-600 font-bold";
+                statusEl.innerText = "✅ อ่านบาร์โค้ดสำเร็จ: " + cleanedText;
+                setTimeout(() => { closeStickerCamera(); }, 150);
+              }
+            }
+          });
         });
 
         // นับถอยหลัง Timeout 8 วินาที
@@ -372,13 +398,27 @@
       hnInput.select();
     }
 
+    // ฟังก์ชันปิดกล้องและคืนหน่วยความจำ (RAM & Hardware Camera) แบบสมบูรณ์ 100%
     function closeStickerCamera() {
       isScanningActive = false;
       if (scanTimeoutTimer) clearInterval(scanTimeoutTimer);
 
+      // 1. Reset ZXing Reader
       if (codeReader) {
         codeReader.reset();
         codeReader = null;
+      }
+
+      // 2. เคลียร์ MediaStream Tracks ออกจากตัวกล้อง
+      const video = document.getElementById('stickerVideo');
+      if (video && video.srcObject) {
+        const stream = video.srcObject;
+        if (stream.getTracks) {
+          stream.getTracks().forEach(track => {
+            track.stop(); // สั่งปิดฮาร์ดแวร์กล้อง
+          });
+        }
+        video.srcObject = null; // ตัด Connection
       }
 
       document.getElementById('stickerCameraModal').classList.add('hidden');
