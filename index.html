@@ -15,7 +15,7 @@
     .camera-overlay {
       position: absolute;
       inset: 0;
-      background: rgba(0, 0, 0, 0.4); 
+      background: rgba(0, 0, 0, 0.35); 
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -23,13 +23,12 @@
       z-index: 10;
     }
 
-    /* กรอบสแกนสติ๊กเกอร์ขนาดเป๊ะ */
+    /* กรอบสแกนสติ๊กเกอร์ */
     .frame-sticker {
       width: 85%;
       max-width: 320px;
       aspect-ratio: 8 / 3.5;
       border: 3px solid #3b82f6;
-      /* ทำช่องเจาะโปร่งแสงเฉพาะในกรอบ */
       box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
       border-radius: 8px;
       position: relative;
@@ -93,7 +92,7 @@
 
     <form id="orderForm" onsubmit="handleSubmit(event)" class="space-y-4">
       
-      <!-- 1. ส่วนถ่ายรูปสติ๊กเกอร์ / สแกน HN -->
+      <!-- 1. ส่วนสแกน HN -->
       <div class="bg-blue-50/60 p-3.5 rounded-xl border border-blue-100">
         <label class="block text-sm font-semibold mb-1 text-blue-900">
           เลข HN คนไข้ (รูปแบบ AA0000) <span class="text-red-500">*</span>
@@ -198,23 +197,23 @@
   <!-- Modal กล้องสแกนสดสติ๊กเกอร์ -->
   <div id="stickerCameraModal" class="fixed inset-0 bg-black z-50 hidden flex flex-col justify-between overflow-hidden">
     <div class="relative flex-1 w-full h-full flex items-center justify-center overflow-hidden">
-      <video id="stickerVideo" autoplay playsinline class="absolute inset-0 w-full h-full object-cover"></video>
+      <video id="stickerVideo" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
       
       <div class="camera-overlay">
         <!-- Header: ปุ่มยกเลิก + Badge สถานะ -->
         <div class="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-30">
             <button type="button" onclick="closeStickerCamera()" class="text-white text-sm font-medium px-4 py-2 rounded-lg bg-black/60 backdrop-blur-sm border border-white/20">✕ ยกเลิก</button>
-            <span id="scanTimerBadge" class="text-xs text-white bg-blue-600/90 px-3 py-1 rounded-full font-mono font-semibold shadow">กำลังสแกน...</span>
+            <span id="scanTimerBadge" class="text-xs text-white bg-blue-600/90 px-3 py-1 rounded-full font-mono font-semibold shadow">กำลังสแกนสด...</span>
         </div>
 
-        <!-- ตรงกลาง: กรอบเล็งสีฟ้าที่ล็อกตำแหน่งแกะบาร์โค้ดเป๊ะๆ -->
-        <div id="targetFrame" class="frame-sticker">
+        <!-- ตรงกลาง: กรอบเล็งสีฟ้า -->
+        <div class="frame-sticker">
           <div class="scan-line-red"></div>
         </div>
         
         <!-- ข้อความแนะนำ -->
         <p class="text-white text-xs mt-4 bg-black/70 px-4 py-2 rounded-full font-medium z-20 shadow-lg border border-white/10">
-          🎯 วางบาร์โค้ดให้อยู่ในกรอบสีฟ้าพอดี
+          🎯 ส่องบาร์โค้ดให้อยู่กลางเส้นสีแดง
         </p>
       </div>
     </div>
@@ -234,20 +233,18 @@
     </div>
   </div>
 
-  <canvas id="cropCanvas" class="hidden"></canvas>
   <canvas id="processCanvas" class="hidden"></canvas>
 
   <script>
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwdlk0kWpdUHgLUCI8QrW3Fj4kBSJNkyGllBkbvx-CkG54K1uNE3ChprUbUOaAExo06rQ/exec";
 
-    // Regular Expression สำหรับล็อกรูปแบบ AA0000 (ตัวอักษรภาษาอังกฤษ 2 ตัว + ตัวเลข 4 ตัว)
+    // Regular Expression สำหรับรูปแบบ AA0000 (ตัวอักษร 2 ตัว + เลข 4 ตัว)
     const HN_REGEX = /^[A-Z]{2}\d{4}$/;
 
     let protocolImages = [];
     let prescriptionImages = [];
     let codeReader = null;
     let scanTimeoutTimer = null;
-    let cropLoopTimer = null;
     let isScanningActive = false;
 
     // ระบบ Authentication
@@ -305,100 +302,62 @@
       });
     }
 
-    // เปิดกล้องสแกนสด (ล็อกพิกัดตรงกรอบสีฟ้า 100%)
+    // เปิดกล้องสแกนสดด้วย Direct Video Stream
     async function openStickerCamera() {
       const modal = document.getElementById('stickerCameraModal');
       const statusEl = document.getElementById('barcodeStatus');
-      const video = document.getElementById('stickerVideo');
       
       statusEl.className = "text-xs text-blue-600 font-semibold animate-pulse";
-      statusEl.innerText = "⏳ กำลังเปิดกล้องสแกน...";
+      statusEl.innerText = "⏳ กำลังเปิดกล้อง...";
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { exact: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }
-        }).catch(() => navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }));
-
-        video.srcObject = stream;
         modal.classList.remove('hidden');
         isScanningActive = true;
 
-        codeReader = new ZXing.BrowserMultiFormatReader();
+        // กำหนดโฟกัสสแกนเจาะจงเฉพาะ Code 128 / Code 39 เพื่อความเร็วระดับสูงสุด
+        const hints = new Map();
+        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+          ZXing.BarcodeFormat.CODE_128,
+          ZXing.BarcodeFormat.CODE_39
+        ]);
 
-        // เมื่อกล้องเริ่มทำงาน ให้ทำ Custom Frame Crop สแกนเฉพาะพื้นที่ในกรอบสีฟ้า
-        video.onloadedmetadata = () => {
-          startExactFrameScanning();
-        };
+        codeReader = new ZXing.BrowserBarcodeReader(hints);
 
-        // ตั้งเวลา Timeout 7 วินาที
-        let timeLeft = 7;
+        // ดึงกล้องหลังโดยตรงและเริ่มสแกนสดผ่าน <video> element
+        await codeReader.decodeFromVideoDevice(undefined, 'stickerVideo', (result, err) => {
+          if (result && result.text && isScanningActive) {
+            const cleanedText = result.text.trim().toUpperCase();
+
+            // ตรวจรูปแบบ AA0000
+            if (HN_REGEX.test(cleanedText)) {
+              isScanningActive = false;
+              
+              document.getElementById('hnInput').value = cleanedText;
+              statusEl.className = "text-xs text-green-600 font-bold";
+              statusEl.innerText = "✅ อ่านบาร์โค้ดสำเร็จ: " + cleanedText;
+
+              closeStickerCamera();
+            }
+          }
+        });
+
+        // นับถอยหลัง Timeout 8 วินาที
+        let timeLeft = 8;
         const timerBadge = document.getElementById('scanTimerBadge');
         
         scanTimeoutTimer = setInterval(() => {
           timeLeft--;
-          if (timerBadge) timerBadge.innerText = `กำลังสแกน (${timeLeft}s)...`;
+          if (timerBadge) timerBadge.innerText = `กำลังสแกนสด (${timeLeft}s)...`;
 
           if (timeLeft <= 0) {
-            handleScanFailure("⚠️ ไม่พบบาร์โค้ดในกรอบ (กรุณากรอกเลข HN เอง)");
+            handleScanFailure("⚠️ อ่านบาร์โค้ดไม่ออก (กรุณากรอกเลข HN ด้วยตนเอง)");
           }
         }, 1000);
 
       } catch (err) {
-        alert("ไม่สามารถเปิดกล้องได้: " + err);
+        alert("ไม่สามารถเปิดกล้องสแกนได้: " + err);
         closeStickerCamera();
       }
-    }
-
-    // ทำงานดึงเฉพาะเฟรมในกรอบสีฟ้าส่งไปแกะบาร์โค้ด
-    function startExactFrameScanning() {
-      const video = document.getElementById('stickerVideo');
-      const canvas = document.getElementById('cropCanvas');
-      const ctx = canvas.getContext('2d');
-
-      cropLoopTimer = setInterval(() => {
-        if (!isScanningActive || video.videoWidth === 0) return;
-
-        const vW = video.videoWidth;
-        const vH = video.videoHeight;
-
-        // คำนวณอัตราส่วนและพิกัดของกรอบสีฟ้าที่ปรากฏบนหน้าจอ
-        const cropW = vW * 0.75;
-        const cropH = cropW * (3.5 / 8); // อัตราส่วน 8 : 3.5
-        const cropX = (vW - cropW) / 2;
-        const cropY = (vH - cropH) / 2;
-
-        canvas.width = cropW;
-        canvas.height = cropH;
-
-        // วาดเฉพาะส่วนในกรอบลง Canvas
-        ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
-
-        // ส่งภาพที่ถูกครอปตรงกรอบสีฟ้าเป๊ะๆ ไปแกะรหัส
-        codeReader.decodeFromCanvas(canvas)
-          .then(result => {
-            if (result && result.text && isScanningActive) {
-              const cleanedText = result.text.trim().toUpperCase();
-
-              // ตรวจสอบว่าเป็นรูปแบบ AA0000 หรือไม่
-              if (HN_REGEX.test(cleanedText)) {
-                isScanningActive = false;
-                
-                // กรอกข้อมูลสำเร็จ
-                document.getElementById('hnInput').value = cleanedText;
-                
-                const statusEl = document.getElementById('barcodeStatus');
-                statusEl.className = "text-xs text-green-600 font-bold";
-                statusEl.innerText = "✅ อ่านบาร์โค้ดสำเร็จ: " + cleanedText;
-
-                closeStickerCamera();
-              }
-            }
-          })
-          .catch(() => {
-            // ยังแกะไม่ได้ในเฟรมนี้ ให้รอลูปถัดไป
-          });
-
-      }, 250); // เช็กทุกๆ 250 มิลลิวินาที
     }
 
     function handleScanFailure(msg) {
@@ -407,7 +366,7 @@
       statusEl.className = "text-xs text-amber-600 font-semibold";
       statusEl.innerText = msg;
       
-      // Focus ไปที่ช่องกรอก HN ให้ผู้ใช้พิมพ์เองได้เลย
+      // สลับไปให้พิมพ์เอง
       const hnInput = document.getElementById('hnInput');
       hnInput.focus();
       hnInput.select();
@@ -416,13 +375,6 @@
     function closeStickerCamera() {
       isScanningActive = false;
       if (scanTimeoutTimer) clearInterval(scanTimeoutTimer);
-      if (cropLoopTimer) clearInterval(cropLoopTimer);
-
-      const video = document.getElementById('stickerVideo');
-      if (video && video.srcObject) {
-        video.srcObject.getTracks().forEach(track => track.stop());
-        video.srcObject = null;
-      }
 
       if (codeReader) {
         codeReader.reset();
@@ -565,7 +517,6 @@
       const submitBtn = document.getElementById('submitBtn');
       const statusMsg = document.getElementById('statusMsg');
 
-      // ตรวจสอบความถูกต้องของ HN อีกครั้งก่อนส่ง
       if (!HN_REGEX.test(hn)) {
         return alert('กรุณาระบุเลข HN ให้ถูกต้องตามรูปแบบ AA0000 (ตัวอักษร 2 ตัว + เลข 4 ตัว)');
       }
