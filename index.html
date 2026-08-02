@@ -12,25 +12,28 @@
     .thumb-grid img { transition: transform 0.2s ease; }
     .thumb-grid img:hover { transform: scale(1.03); }
 
+    /* ปรับ Overlay ให้สว่างขึ้น ลบหมอกดำออก */
     .camera-overlay {
       position: absolute;
       inset: 0;
-      background: rgba(0, 0, 0, 0.35);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       z-index: 10;
+      pointer-events: none; /* เพื่อให้กดผ่าน Overlay ไปยัง Video หรือ Control ได้ */
     }
 
+    /* กรอบสแกนแบบชัดเจน สว่าง ไม่บังสายตา */
     .frame-sticker {
       width: 85%;
       max-width: 320px;
       aspect-ratio: 8 / 3.5;
       border: 3px solid #3b82f6;
-      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
-      border-radius: 8px;
+      border-radius: 12px;
       position: relative;
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); /* เรืองแสงสีฟ้าแทนเงาดำ */
+      background: rgba(255, 255, 255, 0.05);
     }
 
     .scan-line-red {
@@ -42,6 +45,11 @@
       background-color: #ef4444;
       box-shadow: 0 0 8px #ef4444;
       transform: translateY(-50%);
+    }
+
+    /* เปิด pointer-events ให้ปุ่มลอยกดได้ */
+    .clickable-ui {
+      pointer-events: auto;
     }
   </style>
 </head>
@@ -197,23 +205,39 @@
     <p>โรงพยาบาลศรีนครินทร์ คณะแพทยศาสตร์ มหาวิทยาลัยขอนแก่น</p>
   </footer>
 
-  <!-- Modal กล้องสติ๊กเกอร์ -->
-  <div id="stickerCameraModal" class="fixed inset-0 bg-black z-50 hidden flex flex-col justify-between overflow-hidden">
+  <!-- Modal กล้องสติ๊กเกอร์ (ปรับปรุงตำแหน่งปุ่มและแสง) -->
+  <div id="stickerCameraModal" class="fixed inset-0 bg-black z-50 hidden flex flex-col overflow-hidden">
+    <!-- Top Header Bar -->
+    <div class="absolute top-0 inset-x-0 p-4 z-30 flex justify-between items-center bg-gradient-to-b from-black/70 to-transparent">
+      <button type="button" onclick="closeStickerCamera()" class="clickable-ui text-white text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-600 backdrop-blur-sm">
+        ✕ ยกเลิก
+      </button>
+      <span class="text-white/80 text-xs font-medium">สแกนบาร์โค้ด HN</span>
+      <div class="w-12"></div>
+    </div>
+
+    <!-- Video Viewport & Overlay -->
     <div class="relative flex-1 w-full h-full flex items-center justify-center overflow-hidden">
       <video id="stickerVideo" autoplay playsinline class="absolute inset-0 w-full h-full object-cover"></video>
+      
+      <!-- Overlay & Controls อยู่ตรงกลางจอ -->
       <div class="camera-overlay">
         <div class="frame-sticker">
           <div class="scan-line-red"></div>
         </div>
-        <p class="text-white text-xs mt-4 bg-black/60 px-3 py-1 rounded-full font-medium">
-          วางสติ๊กเกอร์ (3.5x8 cm) ให้อยู่ในกรอบสีฟ้า
+        <p class="text-white text-xs mt-3 bg-black/60 backdrop-blur-sm px-3 py-1 rounded-full font-medium drop-shadow-md">
+          วางสติ๊กเกอร์ (3.5x8 cm) ให้อยู่ในกรอบ
         </p>
+
+        <!-- ปุ่มถ่ายรูปย้ายมาอยู่ใต้กรอบสแกนตรงกลางพอดี -->
+        <div class="mt-6 flex flex-col items-center gap-1 clickable-ui">
+          <button type="button" onclick="captureStickerPhoto()" 
+                  class="w-16 h-16 rounded-full border-4 border-white bg-blue-600 active:scale-90 transition shadow-2xl flex items-center justify-center text-xl">
+            📷
+          </button>
+          <span class="text-white text-[11px] font-bold bg-blue-900/80 px-2 py-0.5 rounded-md mt-1 drop-shadow">กดเพื่อถ่ายภาพ</span>
+        </div>
       </div>
-    </div>
-    <div class="bg-black/90 p-5 flex justify-around items-center z-20">
-      <button type="button" onclick="closeStickerCamera()" class="text-white text-sm font-medium px-4 py-2 rounded-lg bg-slate-800">✕ ยกเลิก</button>
-      <button type="button" onclick="captureStickerPhoto()" class="w-16 h-16 rounded-full border-4 border-white bg-blue-600 active:scale-95 transition shadow-lg"></button>
-      <div class="w-12"></div>
     </div>
   </div>
 
