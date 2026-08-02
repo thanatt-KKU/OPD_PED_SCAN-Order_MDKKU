@@ -104,11 +104,11 @@
           
           <button type="button" onclick="openStickerCamera()" 
                   class="bg-blue-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-blue-700 transition flex items-center gap-1 shrink-0 shadow-sm text-xs">
-            📸 สแกนบาร์โค้ด
+            📸 สแกนบาร์โค้ด HN
           </button>
         </div>
 
-        <p id="barcodeStatus" class="text-xs text-slate-500 mt-2">📷 วางบาร์โค้ดให้อยู่ในกรอบสีฟ้าเพื่อสแกนอัตโนมัติ</p>
+        <p id="barcodeStatus" class="text-xs text-slate-500 mt-2">📷 วางบาร์โค้ดให้อยู่ในกรอบ เพื่อสแกนอัตโนมัติ</p>
       </div>
 
       <!-- 2. ส่วนเลือก Ward ปลายทาง -->
@@ -213,7 +213,7 @@
         
         <!-- ข้อความแนะนำ -->
         <p class="text-white text-xs mt-4 bg-black/70 px-4 py-2 rounded-full font-medium z-20 shadow-lg border border-white/10">
-          🎯 ส่องบาร์โค้ดให้อยู่กลางเส้นสีแดง
+          🎯 วางบาร์โค้ดให้อยู่กึ่งกลางกรอบและเส้นสีแดง สามารถขยับมือเข้าออกเพื่อให้โฟกัส
         </p>
       </div>
     </div>
@@ -373,7 +373,7 @@
         
         scanTimeoutTimer = setInterval(() => {
           timeLeft--;
-          if (timerBadge) timerBadge.innerText = `กำลังสแกนสด (${timeLeft}s)...`;
+          if (timerBadge) timerBadge.innerText = `กำลังสแกน (${timeLeft}s)...`;
 
           if (timeLeft <= 0) {
             handleScanFailure("⚠️ อ่านบาร์โค้ดไม่ออก (กรุณากรอกเลข HN ด้วยตนเอง)");
