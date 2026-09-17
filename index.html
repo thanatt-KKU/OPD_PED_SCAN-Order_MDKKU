@@ -429,7 +429,7 @@
       document.getElementById('stickerCameraModal').classList.add('hidden');
     }
 
-    // ประมวลผลภาพแบบ Grayscale + Dynamic Contrast (โทนเอกสารสแกน นุ่มนวล ไม่จ้า)
+// ประมวลผลภาพด้วยอัลกอริทึม Background Normalization (ลบเงามือ + เกลี่ยแสง)
     async function processDocumentUpload(event, type) {
       const files = Array.from(event.target.files);
       if (!files.length) return;
@@ -441,9 +441,8 @@
             const img = new Image();
             img.onload = function() {
               const canvas = document.getElementById('processCanvas');
-              const ctx = canvas.getContext('2d');
+              const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-              // ปรับขนาดตามสัดส่วน A4 แบบภาพสมบูรณ์ (ไม่ Crop ขอบทิ้ง)
               const targetW = 1240;
               const targetH = 1754;
 
@@ -464,22 +463,63 @@
 
               const imgData = ctx.getImageData(0, 0, targetW, targetH);
               const data = imgData.data;
+              const totalPixels = targetW * targetH;
 
-              // แปลงเป็น Grayscale + ปรับ Contrast แบบนุ่มนวล (Dynamic Contrast)
-              for (let i = 0; i < data.length; i += 4) {
-                // คำนวณความสว่างด้วย Luma Formula
-                let gray = data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114;
+              // Step 1: แปลงเป็น Grayscale Array
+              const gray = new Uint8Array(totalPixels);
+              for (let i = 0; i < totalPixels; i++) {
+                const idx = i * 4;
+                gray[i] = data[idx] * 0.299 + data[idx + 1] * 0.587 + data[idx + 2] * 0.114;
+              }
 
-                // Dynamic Soft Contrast: ดันหมึกให้เข้ม เคลียร์พื้นหลังให้สว่าง นุ่มนวลไม่กลบตัวอักษร
-                if (gray < 180) {
-                  gray = Math.max(0, gray * 0.75); // เร่งรอยหมึกและตัวหนังสือให้เข้มคม
-                } else {
-                  gray = Math.min(255, gray * 1.08); // ปรับพื้นหลังสว่างสะอาดตา
+              // Step 2: สร้าง Downsampled Background Map เพื่อคำนวณแสงเงามือ
+              const scaleFactor = 16; // ย่อขนาดเพื่อคำนวณความสว่างเฉลี่ยของเงาแบบรวดเร็ว
+              const mapW = Math.floor(targetW / scaleFactor);
+              const mapH = Math.floor(targetH / scaleFactor);
+              const bgMap = new Float32Array(mapW * mapH);
+
+              for (let my = 0; my < mapH; my++) {
+                for (let mx = 0; mx < mapW; mx++) {
+                  let sum = 0, count = 0;
+                  const startY = my * scaleFactor;
+                  const endY = Math.min(startY + scaleFactor, targetH);
+                  const startX = mx * scaleFactor;
+                  const endX = Math.min(startX + scaleFactor, targetW);
+
+                  for (let y = startY; y < endY; y++) {
+                    for (let x = startX; x < endX; x++) {
+                      sum += gray[y * targetW + x];
+                      count++;
+                    }
+                  }
+                  bgMap[my * mapW + mx] = sum / count;
                 }
+              }
 
-                data[i] = gray;     // Red
-                data[i+1] = gray;   // Green
-                data[i+2] = gray;   // Blue
+              // Step 3: คำนวณ Normalize แสงเพื่อลบเงามือออก
+              for (let y = 0; y < targetH; y++) {
+                const my = Math.min(Math.floor(y / scaleFactor), mapH - 1);
+                for (let x = 0; x < targetW; x++) {
+                  const mx = Math.min(Math.floor(x / scaleFactor), mapW - 1);
+                  const pixelIdx = y * targetW + x;
+                  const origVal = gray[pixelIdx];
+                  const bgVal = bgMap[my * mapW + mx];
+
+                  // หารความสว่างเดิมด้วยความสว่างเงาพื้นหลัง (Division Normalization)
+                  let normalized = (origVal / (bgVal + 1)) * 230;
+
+                  // Dynamic Thresholding: ดันตัวหนังสือหมึกดำให้เข้มชัด และปรับพื้นหลังที่เจอลบรอยเงาให้ขาวสะอาด
+                  if (normalized < 140) {
+                    normalized = normalized * 0.65; // ดันลายมือหมึกให้เข้มคมชัด
+                  } else {
+                    normalized = Math.min(255, normalized * 1.15); // ปรับพื้นหลังกระดาษให้ขาวสะอาด
+                  }
+
+                  const dataIdx = pixelIdx * 4;
+                  data[dataIdx] = normalized;     // Red
+                  data[dataIdx + 1] = normalized; // Green
+                  data[dataIdx + 2] = normalized; // Blue
+                }
               }
 
               ctx.putImageData(imgData, 0, 0);
