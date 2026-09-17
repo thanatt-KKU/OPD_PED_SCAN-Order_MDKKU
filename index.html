@@ -210,6 +210,9 @@
     <p>โรงพยาบาลศรีนครินทร์ คณะแพทยศาสตร์ มหาวิทยาลัยขอนแก่น</p>
   </footer>
 
+  <!-- Hidden Iframe สำหรับรองรับการส่งข้อมูลเพื่อป้องกันปัญหา CORS/Load failed -->
+  <iframe name="hidden_iframe" id="hidden_iframe" class="hidden"></iframe>
+
   <!-- Modal กล้องสแกนสดสติ๊กเกอร์ -->
   <div id="stickerCameraModal" class="fixed inset-0 bg-black z-50 hidden flex flex-col justify-between overflow-hidden">
     <div class="relative flex-1 w-full h-full flex items-center justify-center overflow-hidden">
@@ -429,7 +432,7 @@
       document.getElementById('stickerCameraModal').classList.add('hidden');
     }
 
-// ประมวลผลภาพด้วยอัลกอริทึม Background Normalization (ลบเงามือ + เกลี่ยแสง)
+    // ประมวลผลภาพด้วยอัลกอริทึม Background Normalization (ลบเงามือ + เกลี่ยแสง)
     async function processDocumentUpload(event, type) {
       const files = Array.from(event.target.files);
       if (!files.length) return;
@@ -473,7 +476,7 @@
               }
 
               // Step 2: สร้าง Downsampled Background Map เพื่อคำนวณแสงเงามือ
-              const scaleFactor = 16; // ย่อขนาดเพื่อคำนวณความสว่างเฉลี่ยของเงาแบบรวดเร็ว
+              const scaleFactor = 16;
               const mapW = Math.floor(targetW / scaleFactor);
               const mapH = Math.floor(targetH / scaleFactor);
               const bgMap = new Float32Array(mapW * mapH);
@@ -505,14 +508,12 @@
                   const origVal = gray[pixelIdx];
                   const bgVal = bgMap[my * mapW + mx];
 
-                  // หารความสว่างเดิมด้วยความสว่างเงาพื้นหลัง (Division Normalization)
                   let normalized = (origVal / (bgVal + 1)) * 230;
 
-                  // Dynamic Thresholding: ดันตัวหนังสือหมึกดำให้เข้มชัด และปรับพื้นหลังที่เจอลบรอยเงาให้ขาวสะอาด
                   if (normalized < 140) {
-                    normalized = normalized * 0.65; // ดันลายมือหมึกให้เข้มคมชัด
+                    normalized = normalized * 0.65;
                   } else {
-                    normalized = Math.min(255, normalized * 1.15); // ปรับพื้นหลังกระดาษให้ขาวสะอาด
+                    normalized = Math.min(255, normalized * 1.15);
                   }
 
                   const dataIdx = pixelIdx * 4;
@@ -597,7 +598,8 @@
       }
     }
 
-    async function handleSubmit(e) {
+    // ฟังก์ชันส่งข้อมูลผ่าน Form Submit เข้า hidden_iframe เพื่อป้องกันปัญหา CORS / Load failed
+    function handleSubmit(e) {
       e.preventDefault();
       
       const savedPass = sessionStorage.getItem('appPassword');
@@ -632,28 +634,28 @@
         prescriptionImages: prescriptionImages
       };
 
-      try {
-        const params = new URLSearchParams();
-        params.append('data', JSON.stringify(payload));
+      // สร้าง Form ชั่วคราวเพื่อส่งข้อมูลเข้า hidden_iframe
+      const tempForm = document.createElement('form');
+      tempForm.action = WEB_APP_URL;
+      tempForm.method = 'POST';
+      tempForm.target = 'hidden_iframe';
 
-        await fetch(WEB_APP_URL, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: params.toString()
-        });
+      const dataInput = document.createElement('input');
+      dataInput.type = 'hidden';
+      dataInput.name = 'data';
+      dataInput.value = JSON.stringify(payload);
+      tempForm.appendChild(dataInput);
 
+      document.body.appendChild(tempForm);
+      tempForm.submit();
+      document.body.removeChild(tempForm);
+
+      // แจ้งผลสำเร็จทันทีหลังจากยิงข้อมูลเสร็จสิ้น
+      setTimeout(() => {
         statusMsg.className = "mt-4 text-center text-green-600 font-bold";
-        statusMsg.innerText = "✅ ส่ง Order และสร้างไฟล์ PDF เรียบร้อยแล้ว!";
-
+        statusMsg.innerText = "✅ ส่ง Order เรียบร้อยแล้ว!";
         resetEntireForm();
-
-      } catch (error) {
-        statusMsg.className = "mt-4 text-center text-red-600 font-semibold";
-        statusMsg.innerText = "❌ เกิดข้อผิดพลาด: " + error;
-        submitBtn.disabled = false;
-        submitBtn.innerText = "🚀 ส่ง Order เข้าห้องผลิตยา";
-      }
+      }, 1500);
     }
 
     function resetEntireForm() {
