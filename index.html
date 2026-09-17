@@ -143,12 +143,20 @@
           <span id="protocolCount" class="text-xs font-semibold text-slate-400">0 รูป</span>
         </div>
         
-        <input type="file" id="protocolInput" accept="image/*" capture="environment" class="hidden" onchange="processDocumentUpload(event, 'protocol')">
+        <!-- Hidden Inputs -->
+        <input type="file" id="protocolCamInput" accept="image/*" capture="environment" class="hidden" onchange="processDocumentUpload(event, 'protocol')">
+        <input type="file" id="protocolFileInput" accept="image/*" multiple class="hidden" onchange="processDocumentUpload(event, 'protocol')">
         
-        <button type="button" onclick="document.getElementById('protocolInput').click()" 
-                class="w-full py-3 px-4 border border-amber-300 bg-amber-100 text-amber-900 rounded-lg font-semibold hover:bg-amber-200 active:scale-[0.99] transition flex justify-center items-center gap-2 text-sm shadow-sm">
-          📸 กดถ่ายภาพ Protocol
-        </button>
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" onclick="document.getElementById('protocolCamInput').click()" 
+                  class="py-2.5 px-3 border border-amber-300 bg-amber-100 text-amber-900 rounded-lg font-semibold hover:bg-amber-200 active:scale-[0.99] transition flex justify-center items-center gap-1.5 text-xs shadow-sm">
+            📸 ถ่ายภาพ
+          </button>
+          <button type="button" onclick="document.getElementById('protocolFileInput').click()" 
+                  class="py-2.5 px-3 border border-amber-300 bg-amber-50 text-amber-800 rounded-lg font-semibold hover:bg-amber-100 active:scale-[0.99] transition flex justify-center items-center gap-1.5 text-xs shadow-sm">
+            🖼️ เลือกจากคลังภาพ
+          </button>
+        </div>
 
         <div id="protocolGrid" class="grid grid-cols-3 gap-2 mt-2.5 thumb-grid"></div>
       </div>
@@ -160,12 +168,20 @@
           <span id="prescriptionCount" class="text-xs font-semibold text-slate-400">0 รูป</span>
         </div>
         
-        <input type="file" id="prescriptionInput" accept="image/*" capture="environment" class="hidden" onchange="processDocumentUpload(event, 'prescription')">
+        <!-- Hidden Inputs -->
+        <input type="file" id="prescriptionCamInput" accept="image/*" capture="environment" class="hidden" onchange="processDocumentUpload(event, 'prescription')">
+        <input type="file" id="prescriptionFileInput" accept="image/*" multiple class="hidden" onchange="processDocumentUpload(event, 'prescription')">
         
-        <button type="button" onclick="document.getElementById('prescriptionInput').click()" 
-                class="w-full py-3 px-4 border border-purple-300 bg-purple-100 text-purple-900 rounded-lg font-bold hover:bg-purple-200 active:scale-[0.99] transition flex justify-center items-center gap-2 text-sm shadow-sm">
-          📸 กดถ่ายภาพ ใบสั่งยา
-        </button>
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" onclick="document.getElementById('prescriptionCamInput').click()" 
+                  class="py-2.5 px-3 border border-purple-300 bg-purple-100 text-purple-900 rounded-lg font-bold hover:bg-purple-200 active:scale-[0.99] transition flex justify-center items-center gap-1.5 text-xs shadow-sm">
+            📸 ถ่ายภาพ
+          </button>
+          <button type="button" onclick="document.getElementById('prescriptionFileInput').click()" 
+                  class="py-2.5 px-3 border border-purple-300 bg-purple-50 text-purple-800 rounded-lg font-bold hover:bg-purple-100 active:scale-[0.99] transition flex justify-center items-center gap-1.5 text-xs shadow-sm">
+            🖼️ เลือกจากคลังภาพ
+          </button>
+        </div>
 
         <div id="prescriptionGrid" class="grid grid-cols-3 gap-2 mt-2.5 thumb-grid"></div>
       </div>
@@ -302,7 +318,7 @@
       });
     }
 
-    // เปิดกล้องสแกนสดปรับปรุงประสิทธิภาพ RAM
+    // เปิดกล้องสแกนสด
     async function openStickerCamera() {
       const modal = document.getElementById('stickerCameraModal');
       const statusEl = document.getElementById('barcodeStatus');
@@ -314,7 +330,6 @@
         modal.classList.remove('hidden');
         isScanningActive = true;
 
-        // กำหนด Decode Hints เน้นเฉพาะบาร์โค้ด Code 128 / Code 39
         const hints = new Map();
         hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
           ZXing.BarcodeFormat.CODE_128,
@@ -323,7 +338,6 @@
 
         codeReader = new ZXing.BrowserBarcodeReader(hints);
 
-        // กำหนด Resolution ที่ HD (720p) เพื่อประหยัด RAM/GPU บนมือถือ
         const constraints = {
           video: {
             facingMode: { exact: "environment" },
@@ -332,27 +346,23 @@
           }
         };
 
-        // เริ่มสแกนสดจาก Video Stream
         await codeReader.decodeFromConstraints(constraints, 'stickerVideo', (result, err) => {
           if (result && result.text && isScanningActive) {
             const cleanedText = result.text.trim().toUpperCase();
 
-            // ตรวจรูปแบบ AA0000
             if (HN_REGEX.test(cleanedText)) {
-              isScanningActive = false; // หยุดสแกนทันที
+              isScanningActive = false;
               
               document.getElementById('hnInput').value = cleanedText;
               statusEl.className = "text-xs text-green-600 font-bold";
               statusEl.innerText = "✅ อ่านบาร์โค้ดสำเร็จ: " + cleanedText;
 
-              // หน่วงเวลาเล็กน้อย 150ms เพื่อความนุ่มนวลของการปิด Modal
               setTimeout(() => {
                 closeStickerCamera();
               }, 150);
             }
           }
         }).catch(() => {
-          // Fallback สำหรับอุปกรณ์ที่ไม่รองรับ facingMode exact
           return codeReader.decodeFromVideoDevice(undefined, 'stickerVideo', (result, err) => {
             if (result && result.text && isScanningActive) {
               const cleanedText = result.text.trim().toUpperCase();
@@ -367,7 +377,6 @@
           });
         });
 
-        // นับถอยหลัง Timeout 8 วินาที
         let timeLeft = 8;
         const timerBadge = document.getElementById('scanTimerBadge');
         
@@ -392,101 +401,107 @@
       statusEl.className = "text-xs text-amber-600 font-semibold";
       statusEl.innerText = msg;
       
-      // สลับไปให้พิมพ์เอง
       const hnInput = document.getElementById('hnInput');
       hnInput.focus();
       hnInput.select();
     }
 
-    // ฟังก์ชันปิดกล้องและคืนหน่วยความจำ (RAM & Hardware Camera) แบบสมบูรณ์ 100%
     function closeStickerCamera() {
       isScanningActive = false;
       if (scanTimeoutTimer) clearInterval(scanTimeoutTimer);
 
-      // 1. Reset ZXing Reader
       if (codeReader) {
         codeReader.reset();
         codeReader = null;
       }
 
-      // 2. เคลียร์ MediaStream Tracks ออกจากตัวกล้อง
       const video = document.getElementById('stickerVideo');
       if (video && video.srcObject) {
         const stream = video.srcObject;
         if (stream.getTracks) {
           stream.getTracks().forEach(track => {
-            track.stop(); // สั่งปิดฮาร์ดแวร์กล้อง
+            track.stop();
           });
         }
-        video.srcObject = null; // ตัด Connection
+        video.srcObject = null;
       }
 
       document.getElementById('stickerCameraModal').classList.add('hidden');
     }
 
-    function processDocumentUpload(event, type) {
-      const file = event.target.files[0];
-      if (!file) return;
+    // ประมวลผลภาพแบบ Grayscale + Dynamic Contrast (โทนเอกสารสแกน นุ่มนวล ไม่จ้า)
+    async function processDocumentUpload(event, type) {
+      const files = Array.from(event.target.files);
+      if (!files.length) return;
 
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const img = new Image();
-        img.onload = function() {
-          const canvas = document.getElementById('processCanvas');
-          const ctx = canvas.getContext('2d');
+      for (const file of files) {
+        await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+              const canvas = document.getElementById('processCanvas');
+              const ctx = canvas.getContext('2d');
 
-          const targetW = 1240;
-          const targetH = 1754;
+              // ปรับขนาดตามสัดส่วน A4 แบบภาพสมบูรณ์ (ไม่ Crop ขอบทิ้ง)
+              const targetW = 1240;
+              const targetH = 1754;
 
-          canvas.width = targetW;
-          canvas.height = targetH;
+              canvas.width = targetW;
+              canvas.height = targetH;
 
-          ctx.fillStyle = "#FFFFFF";
-          ctx.fillRect(0, 0, targetW, targetH);
+              ctx.fillStyle = "#FFFFFF";
+              ctx.fillRect(0, 0, targetW, targetH);
 
-          const cropMarginX = img.width * 0.07;
-          const cropMarginY = img.height * 0.07;
-          
-          const cropWidth = img.width - (cropMarginX * 2);
-          const cropHeight = img.height - (cropMarginY * 2);
+              // คำนวณรักษาสัดส่วน Aspect Ratio (Fit in Center)
+              const scale = Math.min(targetW / img.width, targetH / img.height);
+              const drawW = img.width * scale;
+              const drawH = img.height * scale;
+              const offsetX = (targetW - drawW) / 2;
+              const offsetY = (targetH - drawH) / 2;
 
-          ctx.drawImage(img, cropMarginX, cropMarginY, cropWidth, cropHeight, 0, 0, targetW, targetH);
+              ctx.drawImage(img, 0, 0, img.width, img.height, offsetX, offsetY, drawW, drawH);
 
-          const imgData = ctx.getImageData(0, 0, targetW, targetH);
-          const data = imgData.data;
+              const imgData = ctx.getImageData(0, 0, targetW, targetH);
+              const data = imgData.data;
 
-          for (let i = 0; i < data.length; i += 4) {
-            const brightness = (data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114);
+              // แปลงเป็น Grayscale + ปรับ Contrast แบบนุ่มนวล (Dynamic Contrast)
+              for (let i = 0; i < data.length; i += 4) {
+                // คำนวณความสว่างด้วย Luma Formula
+                let gray = data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114;
 
-            if (brightness > 115) {
-              data[i] = 255;
-              data[i+1] = 255;
-              data[i+2] = 255;
-            } else {
-              const contrastVal = Math.max(0, brightness * 0.5);
-              data[i] = contrastVal;
-              data[i+1] = contrastVal;
-              data[i+2] = contrastVal;
-            }
-          }
-          ctx.putImageData(imgData, 0, 0);
+                // Dynamic Soft Contrast: ดันหมึกให้เข้ม เคลียร์พื้นหลังให้สว่าง นุ่มนวลไม่กลบตัวอักษร
+                if (gray < 180) {
+                  gray = Math.max(0, gray * 0.75); // เร่งรอยหมึกและตัวหนังสือให้เข้มคม
+                } else {
+                  gray = Math.min(255, gray * 1.08); // ปรับพื้นหลังสว่างสะอาดตา
+                }
 
-          const processedBase64 = canvas.toDataURL('image/jpeg', 0.85);
+                data[i] = gray;     // Red
+                data[i+1] = gray;   // Green
+                data[i+2] = gray;   // Blue
+              }
 
-          if (type === 'protocol') {
-            protocolImages.push(processedBase64);
-            renderThumbnails('protocol');
-          } else {
-            prescriptionImages.push(processedBase64);
-            renderThumbnails('prescription');
-          }
+              ctx.putImageData(imgData, 0, 0);
 
-          event.target.value = "";
-          checkFormStatus();
-        };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
+              const processedBase64 = canvas.toDataURL('image/jpeg', 0.82);
+
+              if (type === 'protocol') {
+                protocolImages.push(processedBase64);
+              } else {
+                prescriptionImages.push(processedBase64);
+              }
+              resolve();
+            };
+            img.src = e.target.result;
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      renderThumbnails(type);
+      event.target.value = "";
+      checkFormStatus();
     }
 
     function renderThumbnails(type) {
